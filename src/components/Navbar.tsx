@@ -45,7 +45,7 @@ const Navbar: React.FC = () => {
           <div className="flex-shrink-0 font-bold text-2xl">
             <a href="/" className="flex items-center">
               <span className="text-funneepurple font-toybox text-5xl font-bold">Funnee</span>
-              <span className="text-funneeorange font-toybox text-5xl my-0 py-0 mx-0 px-[5px] font-bold">Kiddee</span>
+              <span className="text-funneeorange font-toybox text-5xl my-0 py-0 mx-0 font-bold px-[16px]">Kiddee</span>
             </a>
           </div>
 

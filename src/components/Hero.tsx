@@ -26,9 +26,7 @@ const Hero: React.FC = () => {
         duration: 0.6,
         delay: 0.2
       }}>
-          <span className="inline-block px-3 py-1 mb-4 text-sm font-medium bg-funneepurple/10 text-funneepurple rounded-full">
-            Funnee Kiddee Party Services
-          </span>
+          
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
             {t('hero.title')}
           </h1>

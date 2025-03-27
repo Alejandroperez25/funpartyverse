@@ -28,8 +28,8 @@ const Footer: React.FC = () => {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center">
               <h2 className="text-2xl font-bold">
-                <span className="text-funneepurple font-kidsrock">Funnee</span>
-                <span className="text-funneeorange font-kidsrock">Kiddee</span>
+                <span className="text-funneepurple">Funnee</span>
+                <span className="text-funneeorange">Kiddee</span>
               </h2>
             </div>
             <p className="mt-4 text-gray-400 max-w-md">

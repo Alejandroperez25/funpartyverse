@@ -19,6 +19,9 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				'toybox': ['"Bubblegum Sans"', 'cursive'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -63,9 +66,9 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-        funneepurple: '#9b87f5',
-        funneeblue: '#33C3F0',
-        funneeorange: '#F97316',
+				funneepurple: '#9b87f5',
+				funneeblue: '#33C3F0',
+				funneeorange: '#F97316',
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

@@ -2,11 +2,26 @@
 import React from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import ServiceCard from './ServiceCard';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Tent, Popcorn, Candy, UtensilsCrossed, LampFloor, Table } from 'lucide-react';
 
 const Services: React.FC = () => {
   const { t } = useLanguage();
+  const { scrollY } = useScroll();
+  
+  // Create staggered card entrance effect
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const titleOpacity = useTransform(scrollY, [300, 500], [0, 1]);
+  const titleY = useTransform(scrollY, [300, 500], [50, 0]);
 
   const services = [
     {
@@ -64,23 +79,31 @@ const Services: React.FC = () => {
       <div className="section-container">
         <motion.div 
           className="text-center mb-16"
+          style={{ opacity: titleOpacity, y: titleY }}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
         >
           <h2 className="section-title text-gradient">{t('services.title')}</h2>
           <p className="section-subtitle">{t('services.subtitle')}</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          variants={container}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-50px" }}
+        >
           {services.map((service, index) => (
             <ServiceCard 
               key={service.id} 
               {...service}
+              index={index}
             />
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

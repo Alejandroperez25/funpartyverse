@@ -44,7 +44,7 @@ const Navbar: React.FC = () => {
           {/* Logo */}
           <div className="flex-shrink-0">
             <a href="/" className="flex items-center">
-              <span className="text-funneepurple font-kidsrock font-semibold text-5xl">Funnee</span>
+              <span className="text-funneepurple font-kidsrock font-semibold text-5xl px-0 my-0 py-0 mx-px">Funnee</span>
               <span className="text-funneeorange font-kidsrock font-semibold text-5xl">Kiddee</span>
             </a>
           </div>

@@ -36,12 +36,8 @@ const Hero: React.FC = () => {
             {t('hero.subtitle')}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-            <Button className="bg-funneepurple hover:bg-funneepurple/90 text-white px-8 py-6 text-lg">
-              {t('hero.cta')}
-            </Button>
-            <Button variant="outline" className="border-funneepurple text-funneepurple hover:bg-funneepurple/10 px-8 py-6 text-lg">
-              {t('nav.contact')}
-            </Button>
+            
+            
           </div>
         </motion.div>
         

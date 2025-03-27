@@ -3,7 +3,7 @@ import React from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import ServiceCard from './ServiceCard';
 import { motion } from 'framer-motion';
-import { BounceHouse, Popcorn, CandyCane, HotDog, Chair, Table } from 'lucide-react';
+import { Tent, Popcorn, Candy, UtensilsCrossed, LampFloor, Table } from 'lucide-react';
 
 const Services: React.FC = () => {
   const { t } = useLanguage();
@@ -15,7 +15,7 @@ const Services: React.FC = () => {
       description: 'Colorful and safe bounce houses for endless fun and entertainment.',
       price: 149.99,
       image: 'https://images.unsplash.com/photo-1534570122623-99e8378a9aa7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80',
-      icon: <BounceHouse className="h-5 w-5 text-funneepurple" />
+      icon: <Tent className="h-5 w-5 text-funneepurple" />
     },
     {
       id: 'popcorn-machine',
@@ -31,7 +31,7 @@ const Services: React.FC = () => {
       description: 'Sweet, fluffy cotton candy to delight party guests of all ages.',
       price: 89.99,
       image: 'https://images.unsplash.com/photo-1576744583403-a8b82fda32ad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80',
-      icon: <CandyCane className="h-5 w-5 text-funneepurple" />
+      icon: <Candy className="h-5 w-5 text-funneepurple" />
     },
     {
       id: 'hot-dog-machine',
@@ -39,7 +39,7 @@ const Services: React.FC = () => {
       description: 'Delicious hot dogs cooked to perfection for a savory party treat.',
       price: 99.99,
       image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80',
-      icon: <HotDog className="h-5 w-5 text-funneepurple" />
+      icon: <UtensilsCrossed className="h-5 w-5 text-funneepurple" />
     },
     {
       id: 'chairs',
@@ -47,7 +47,7 @@ const Services: React.FC = () => {
       description: 'Comfortable seating for your guests to relax and enjoy the festivities.',
       price: 2.99,
       image: 'https://images.unsplash.com/photo-1580584126903-c17d41830450?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80',
-      icon: <Chair className="h-5 w-5 text-funneepurple" />
+      icon: <LampFloor className="h-5 w-5 text-funneepurple" />
     },
     {
       id: 'tables',

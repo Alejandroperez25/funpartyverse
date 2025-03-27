@@ -1,18 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import LanguageToggle from './LanguageToggle';
 import ShoppingCart from './ShoppingCart';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
-
 const Navbar: React.FC = () => {
   const {
     t
   } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
@@ -21,11 +18,9 @@ const Navbar: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-  
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
-  
   const navItems = [{
     id: 'home',
     label: t('nav.home'),
@@ -43,15 +38,14 @@ const Navbar: React.FC = () => {
     label: t('nav.contact'),
     href: '#contact'
   }];
-  
   return <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-md shadow-sm' : 'bg-transparent'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <div className="flex-shrink-0">
             <a href="/" className="flex items-center">
-              <span className="text-funneepurple text-4xl font-kidsrock">Funnee</span>
-              <span className="text-funneeorange text-4xl font-kidsrock">Kiddee</span>
+              <span className="text-funneepurple font-kidsrock font-semibold text-5xl">Funnee</span>
+              <span className="text-funneeorange font-kidsrock font-semibold text-5xl">Kiddee</span>
             </a>
           </div>
 
@@ -89,5 +83,4 @@ const Navbar: React.FC = () => {
       </div>
     </header>;
 };
-
 export default Navbar;

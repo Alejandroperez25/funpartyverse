@@ -44,7 +44,7 @@ const ContactSection: React.FC = () => {
     }
   ];
 
-  // Contact info animation variants
+  // Animation variants - properly separated from the contact info
   const container = {
     hidden: { opacity: 0 },
     show: {
@@ -159,12 +159,12 @@ const ContactSection: React.FC = () => {
             whileInView="show"
             viewport={{ once: true, margin: "-100px" }}
           >
-            {contactInfo.map((item, index) => (
+            {contactInfo.map((info, index) => (
               <motion.a
                 key={index}
-                href={item.href}
-                target={item.title === 'Instagram' ? '_blank' : undefined}
-                rel={item.title === 'Instagram' ? 'noopener noreferrer' : undefined}
+                href={info.href}
+                target={info.title === 'Instagram' ? '_blank' : undefined}
+                rel={info.title === 'Instagram' ? 'noopener noreferrer' : undefined}
                 className="flex items-start gap-4 p-6 bg-white rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-md"
                 variants={item}
                 whileHover={{ y: -10, transition: { duration: 0.3 } }}
@@ -174,11 +174,11 @@ const ContactSection: React.FC = () => {
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   transition={{ type: "spring", stiffness: 400, damping: 10 }}
                 >
-                  {item.icon}
+                  {info.icon}
                 </motion.div>
                 <div>
-                  <h3 className="font-medium text-gray-900">{item.title}</h3>
-                  <p className="text-gray-600">{item.content}</p>
+                  <h3 className="font-medium text-gray-900">{info.title}</h3>
+                  <p className="text-gray-600">{info.content}</p>
                 </div>
               </motion.a>
             ))}

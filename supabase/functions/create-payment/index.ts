@@ -18,7 +18,7 @@ serve(async (req) => {
     // Obtener secretos y configurar clientes
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
+    const stripeSecretKey = 'sk_test_51R7gzmQHdPrI53nn6qe7c2zdksq6V5gubpCX6YpPkfsfgbvfe9W2ZlNCUdNqoskaBYfqHxuS7Y1C5hPR4UXafqFO00tKURMQy8';
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     const stripe = new Stripe(stripeSecretKey, {
@@ -44,9 +44,22 @@ serve(async (req) => {
       return total + (item.price * item.quantity);
     }, 0);
 
+    // Configurar los métodos de pago según lo solicitado
+    const paymentMethodTypes = ['card'];
+    
+    // Añadir Apple Pay si se solicitó
+    if (paymentMethod === 'apple_pay') {
+      paymentMethodTypes.push('apple_pay');
+    }
+    
+    // Añadir Google Pay si se solicitó
+    if (paymentMethod === 'google_pay') {
+      paymentMethodTypes.push('google_pay');
+    }
+
     // Crear la sesión de checkout de Stripe
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+      payment_method_types: paymentMethodTypes,
       line_items: items.map(item => ({
         price_data: {
           currency: 'usd',

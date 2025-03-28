@@ -6,8 +6,7 @@ import Services from '@/components/Services';
 import FeaturedProduct from '@/components/FeaturedProduct';
 import ContactSection from '@/components/ContactSection';
 import Footer from '@/components/Footer';
-import { LanguageProvider } from '@/context/LanguageContext';
-import { CartProvider } from '@/context/CartContext';
+import Products from './Products';
 
 const Index: React.FC = () => {
   useEffect(() => {
@@ -15,20 +14,17 @@ const Index: React.FC = () => {
   }, []);
 
   return (
-    <LanguageProvider>
-      <CartProvider>
-        <div className="min-h-screen flex flex-col">
-          <Navbar />
-          <main className="flex-grow">
-            <Hero />
-            <Services />
-            <FeaturedProduct />
-            <ContactSection />
-          </main>
-          <Footer />
-        </div>
-      </CartProvider>
-    </LanguageProvider>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      <main className="flex-grow">
+        <Hero />
+        <Products />
+        <Services />
+        <FeaturedProduct />
+        <ContactSection />
+      </main>
+      <Footer />
+    </div>
   );
 };
 

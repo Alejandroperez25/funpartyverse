@@ -45,13 +45,6 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
         ]
       }
       orders: {
@@ -83,34 +76,52 @@ export type Database = {
       }
       products: {
         Row: {
-          created_at: string
+          created_at: string | null
           description: string | null
-          id: string
+          id: number
           image: string | null
           name: string
           price: number
-          stock: number
-          updated_at: string
+          stock: number | null
+          user_id: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          id?: string
+          id?: never
           image?: string | null
           name: string
           price: number
-          stock?: number
-          updated_at?: string
+          stock?: number | null
+          user_id?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          id?: string
+          id?: never
           image?: string | null
           name?: string
           price?: number
-          stock?: number
-          updated_at?: string
+          stock?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          role?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string
         }
         Relationships: []
       }

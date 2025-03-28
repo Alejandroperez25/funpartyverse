@@ -1,208 +1,128 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { Phone, Mail, Instagram } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const ContactSection: React.FC = () => {
   const { t } = useLanguage();
-  const { scrollY } = useScroll();
-  
-  // Create scroll-based animations
-  const formY = useTransform(scrollY, [1400, 1800], [50, 0]);
-  const formOpacity = useTransform(scrollY, [1400, 1800], [0, 1]);
-  const infoY = useTransform(scrollY, [1500, 1900], [50, 0]);
-  const infoOpacity = useTransform(scrollY, [1500, 1900], [0, 1]);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('Form submitted');
-  };
-
-  const contactInfo = [
-    {
-      icon: <Phone className="h-5 w-5" />,
-      title: t('contact.phone'),
-      content: '(727) 910-0076',
-      href: 'tel:+17279100076'
-    },
-    {
-      icon: <Mail className="h-5 w-5" />,
-      title: t('contact.email'),
-      content: 'funneekiddee@gmail.com',
-      href: 'mailto:funneekiddee@gmail.com'
-    },
-    {
-      icon: <Instagram className="h-5 w-5" />,
-      title: 'Instagram',
-      content: '@funneekiddee',
-      href: 'https://instagram.com/funneekiddee'
-    }
-  ];
-
-  // Animation variants - properly separated from the contact info
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.5 }
-    }
+    setLoading(true);
+    
+    // Here you would normally send the form to a backend
+    // For now, let's just simulate a sending delay
+    setTimeout(() => {
+      toast({
+        title: 'Mensaje enviado correctamente',
+        description: 'Gracias por contactarnos. Te responderemos a la brevedad.',
+      });
+      
+      // Clear form
+      setName('');
+      setEmail('');
+      setMessage('');
+      setLoading(false);
+    }, 1000);
   };
 
   return (
     <section id="contact" className="py-24 bg-gray-50">
-      <div className="section-container">
+      <div className="container mx-auto px-4">
         <motion.div 
           className="text-center mb-16"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.6 }}
         >
-          <h2 className="section-title text-gradient">{t('contact.title')}</h2>
-          <p className="section-subtitle">{t('contact.subtitle')}</p>
+          <h2 className="text-3xl font-bold mb-4">{t('contact.title')}</h2>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            {t('contact.subtitle')}
+          </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-          {/* Contact Form with slide-in effect */}
+        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10">
           <motion.div 
-            className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100"
-            style={{ y: formY, opacity: formOpacity }}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-lg overflow-hidden"
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.5 }}
-            whileHover={{ y: -5, transition: { duration: 0.3 } }}
+            transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Form inputs with hover effects */}
-              <div className="space-y-2">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                  {t('contact.name')}
-                </label>
-                <motion.div whileHover={{ scale: 1.01 }} transition={{ duration: 0.2 }}>
-                  <Input 
-                    id="name" 
-                    name="name" 
-                    type="text" 
-                    required 
-                    className="w-full"
+            <div className="p-8">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('contact.name')}
+                  </label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t('contact.namePlaceholder')}
+                    required
                   />
-                </motion.div>
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  {t('contact.email')}
-                </label>
-                <motion.div whileHover={{ scale: 1.01 }} transition={{ duration: 0.2 }}>
-                  <Input 
-                    id="email" 
-                    name="email" 
-                    type="email" 
-                    required 
-                    className="w-full"
+                </div>
+                
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('contact.email')}
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('contact.emailPlaceholder')}
+                    required
                   />
-                </motion.div>
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="message" className="block text-sm font-medium text-gray-700">
-                  {t('contact.message')}
-                </label>
-                <motion.div whileHover={{ scale: 1.01 }} transition={{ duration: 0.2 }}>
-                  <Textarea 
-                    id="message" 
-                    name="message" 
-                    rows={5} 
-                    required 
-                    className="w-full"
+                </div>
+                
+                <div>
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('contact.message')}
+                  </label>
+                  <Textarea
+                    id="message"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder={t('contact.messagePlaceholder')}
+                    rows={6}
+                    required
                   />
-                </motion.div>
-              </div>
-              
-              <motion.div
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <Button 
-                  type="submit" 
-                  className="w-full bg-funneepurple hover:bg-funneepurple/90 text-white"
-                >
-                  {t('contact.send')}
+                </div>
+                
+                <Button type="submit" className="w-full bg-funneepurple hover:bg-funneepurple/90" disabled={loading}>
+                  {loading ? t('contact.sending') : t('contact.send')}
                 </Button>
-              </motion.div>
-            </form>
+              </form>
+            </div>
           </motion.div>
           
-          {/* Contact Information with staggered animation */}
           <motion.div 
-            className="space-y-8"
-            style={{ y: infoY, opacity: infoOpacity }}
-            variants={container}
-            initial="hidden"
-            whileInView="show"
+            className="relative rounded-xl overflow-hidden h-96 md:h-auto"
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, delay: 0.4 }}
           >
-            {contactInfo.map((info, index) => (
-              <motion.a
-                key={index}
-                href={info.href}
-                target={info.title === 'Instagram' ? '_blank' : undefined}
-                rel={info.title === 'Instagram' ? 'noopener noreferrer' : undefined}
-                className="flex items-start gap-4 p-6 bg-white rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-md"
-                variants={item}
-                whileHover={{ y: -10, transition: { duration: 0.3 } }}
-              >
-                <motion.div 
-                  className="p-3 bg-funneepurple/10 rounded-full text-funneepurple"
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                >
-                  {info.icon}
-                </motion.div>
-                <div>
-                  <h3 className="font-medium text-gray-900">{info.title}</h3>
-                  <p className="text-gray-600">{info.content}</p>
-                </div>
-              </motion.a>
-            ))}
-            
-            {/* Map with hover effect */}
-            <motion.div 
-              className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 h-64 mt-6"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              whileHover={{ y: -10, transition: { duration: 0.3 } }}
-            >
-              <iframe 
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d224444.96232238098!2d-82.83754159435759!3d27.876051595114058!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x88c2b782b3b9d1ef%3A0xa75f1389af96b463!2sSt.%20Petersburg%2C%20FL!5e0!3m2!1sen!2sus!4v1692363175554!5m2!1sen!2sus" 
-                width="100%" 
-                height="100%" 
-                style={{ border: 0 }} 
-                allowFullScreen 
-                loading="lazy" 
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Funnee Kiddee location"
-              ></iframe>
-            </motion.div>
+            <iframe 
+              title="Company Location"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3976.8569068099373!2d-74.07120638573423!3d4.603096296654254!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8e3f99a1f30307cf%3A0xf9b0d78e87c75ea!2sBogot%C3%A1%2C%20Colombia!5e0!3m2!1sen!2sco!4v1625590817864!5m2!1sen!2sco" 
+              width="100%" 
+              height="100%" 
+              loading="lazy"
+              className="absolute inset-0"
+            ></iframe>
           </motion.div>
         </div>
       </div>

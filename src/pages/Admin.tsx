@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -26,6 +27,8 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
+import FileUploader from '@/components/FileUploader';
+import { Link } from 'react-router-dom';
 
 interface Product {
   id: string;
@@ -191,6 +194,10 @@ const Admin: React.FC = () => {
     }
   };
 
+  const handleFileUploaded = (url: string) => {
+    setImage(url);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -228,21 +235,28 @@ const Admin: React.FC = () => {
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold">Administración de Productos</h1>
-            <Button 
-              onClick={() => {
-                setCurrentProduct(null);
-                setName('');
-                setDescription('');
-                setPrice('');
-                setStock('');
-                setImage('');
-                setIsNewProduct(true);
-                setOpen(true);
-              }}
-              className="bg-funneepurple hover:bg-funneepurple/90"
-            >
-              Añadir Producto
-            </Button>
+            <div className="flex gap-4">
+              <Link to="/admin/orders">
+                <Button variant="outline">
+                  Administrar Pedidos
+                </Button>
+              </Link>
+              <Button 
+                onClick={() => {
+                  setCurrentProduct(null);
+                  setName('');
+                  setDescription('');
+                  setPrice('');
+                  setStock('');
+                  setImage('');
+                  setIsNewProduct(true);
+                  setOpen(true);
+                }}
+                className="bg-funneepurple hover:bg-funneepurple/90"
+              >
+                Añadir Producto
+              </Button>
+            </div>
           </div>
           
           {products.length === 0 ? (
@@ -366,15 +380,28 @@ const Admin: React.FC = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="image" className="text-right">
-                    Imagen URL
+                  <Label className="text-right">
+                    Imagen
                   </Label>
-                  <Input
-                    id="image"
-                    value={image}
-                    onChange={(e) => setImage(e.target.value)}
-                    className="col-span-3"
-                  />
+                  <div className="col-span-3">
+                    <FileUploader 
+                      onFileUploaded={handleFileUploaded}
+                      bucketName="product-images"
+                    />
+                    
+                    {image && (
+                      <div className="mt-4">
+                        <p className="text-sm text-gray-500 mb-2">Vista previa:</p>
+                        <div className="h-32 w-32 rounded-md overflow-hidden bg-gray-100">
+                          <img 
+                            src={image} 
+                            alt="Preview" 
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <DialogFooter>

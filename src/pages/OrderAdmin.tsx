@@ -1,5 +1,4 @@
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
@@ -8,11 +7,11 @@ import Loading from '@/components/Loading';
 import OrderTable from '@/components/orders/OrderTable';
 import OrderEditDialog from '@/components/orders/OrderEditDialog';
 import { useOrders } from '@/hooks/useOrders';
-import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const OrderAdmin: React.FC = () => {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const {
     orders,
     loading,
@@ -25,15 +24,58 @@ const OrderAdmin: React.FC = () => {
   } = useOrders();
 
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/');
-      toast({
-        title: 'Acceso Restringido',
-        description: 'No tienes permisos para acceder a esta página',
-        variant: 'destructive',
-      });
-    }
-  }, [isAdmin, navigate]);
+    const checkAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setIsAdmin(false);
+        navigate('/');
+        toast({
+          title: 'Acceso Restringido',
+          description: 'Debes iniciar sesión para acceder a esta página',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Verificar si el usuario es admin
+      const { data: userData } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (userData?.is_admin) {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+        navigate('/');
+        toast({
+          title: 'Acceso Restringido',
+          description: 'No tienes permisos de administrador',
+          variant: 'destructive',
+        });
+      }
+    };
+    
+    checkAdmin();
+  }, [navigate]);
+
+  // Mostrar carga mientras se verifica el estado de admin
+  if (isAdmin === null) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <Loading />
+        <Footer />
+      </div>
+    );
+  }
+
+  // Si no es admin, ya se redirigió en el useEffect
+  if (!isAdmin) {
+    return null;
+  }
 
   if (loading) {
     return (

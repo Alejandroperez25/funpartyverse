@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const OrderAdmin: React.FC = () => {
   const navigate = useNavigate();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [authStatus, setAuthStatus] = useState<'checking' | 'admin' | 'unauthorized'>('checking');
   const {
     orders,
     loading,
@@ -24,45 +24,49 @@ const OrderAdmin: React.FC = () => {
   } = useOrders();
 
   useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        setIsAdmin(false);
-        navigate('/');
+    const checkAdminStatus = async () => {
+      try {
+        // 1. Verificar sesión
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          throw new Error('No autenticado');
+        }
+
+        // 2. Obtener perfil del usuario
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError || !profile) {
+          throw new Error('Perfil no encontrado');
+        }
+
+        // 3. Verificar si es admin
+        if (profile.is_admin) {
+          setAuthStatus('admin');
+        } else {
+          throw new Error('No es administrador');
+        }
+
+      } catch (error) {
+        setAuthStatus('unauthorized');
         toast({
-          title: 'Acceso Restringido',
-          description: 'Debes iniciar sesión para acceder a esta página',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      // Verificar si el usuario es admin
-      const { data: userData } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (userData?.is_admin) {
-        setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
-        navigate('/');
-        toast({
-          title: 'Acceso Restringido',
+          title: 'Acceso restringido',
           description: 'No tienes permisos de administrador',
           variant: 'destructive',
         });
+        navigate('/');
       }
     };
-    
-    checkAdmin();
+
+    checkAdminStatus();
   }, [navigate]);
 
-  // Mostrar carga mientras se verifica el estado de admin
-  if (isAdmin === null) {
+  // Estado de carga mientras se verifica autenticación
+  if (authStatus === 'checking') {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -72,11 +76,12 @@ const OrderAdmin: React.FC = () => {
     );
   }
 
-  // Si no es admin, ya se redirigió en el useEffect
-  if (!isAdmin) {
+  // Si no es admin, ya fue redirigido en el useEffect
+  if (authStatus !== 'admin') {
     return null;
   }
 
+  // Estado de carga mientras se obtienen los pedidos
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">

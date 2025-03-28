@@ -1,53 +1,80 @@
 
 import React from 'react';
-import { useLanguage } from '@/context/LanguageContext';
-import ShoppingCart from './ShoppingCart';
-import { Button } from "@/components/ui/button";
-import { MoonIcon, SunIcon } from "lucide-react";
-import { useTheme } from 'next-themes';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { ModeToggle } from '@/components/ui/mode-toggle';
+import LanguageToggle from '@/components/LanguageToggle';
+import ShoppingCart from '@/components/ShoppingCart';
+import { Button } from '@/components/ui/button';
+import { LogOut, User } from 'lucide-react';
 
 const Navbar: React.FC = () => {
-  const { t, language, setLanguage } = useLanguage();
-  const { theme, setTheme } = useTheme();
-
-  const handleLanguageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setLanguage(event.target.value);
-  };
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
+  const { user, isAdmin, signOut } = useAuth();
+  const { t, setLanguage } = useLanguage();
+  
+  const handleLanguageChange = (lang: 'es' | 'en') => {
+    setLanguage(lang);
   };
 
   return (
-    <nav className="bg-white dark:bg-gray-900 shadow">
-      <div className="section-container">
-        <div className="flex items-center justify-between py-4">
-          <Link to="/" className="flex items-center text-2xl font-semibold text-funneepurple dark:text-white">
-            Funnee Kiddee
+    <nav className="border-b w-full bg-background">
+      <div className="container mx-auto px-4 py-2 flex items-center justify-between">
+        <Link to="/" className="text-2xl font-bold text-funneepurple">
+          Funnee Prints
+        </Link>
+        
+        <div className="flex items-center gap-2 sm:gap-4">
+          <Link to="/products" className="text-sm sm:text-base hover:text-funneepurple">
+            {t('navbar.products')}
           </Link>
-          <div className="flex items-center space-x-6">
-            <Link to="/products" className="hidden md:block text-gray-600 dark:text-gray-300 hover:text-funneepurple dark:hover:text-funneeblue transition-colors">
-              {t('navbar.products')}
+          
+          {user && (
+            <Link to="/orders" className="text-sm sm:text-base hover:text-funneepurple">
+              {t('navbar.orders')}
             </Link>
-            <select
-              className="block appearance-none w-full bg-gray-50 border border-gray-200 text-gray-500 py-2 px-4 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              onChange={handleLanguageChange}
-              defaultValue={language}
-            >
-              <option value="en">English</option>
-              <option value="es">Español</option>
-            </select>
-            <ShoppingCart />
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={toggleTheme}
-              className="rounded-full h-10 w-10"
-            >
-              {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-            </Button>
-          </div>
+          )}
+          
+          {isAdmin && (
+            <Link to="/admin" className="text-sm sm:text-base hover:text-funneepurple">
+              {t('navbar.admin')}
+            </Link>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <LanguageToggle 
+            onLanguageChange={handleLanguageChange} 
+          />
+          
+          <ModeToggle />
+          
+          {user ? (
+            <div className="flex items-center gap-2">
+              <ShoppingCart />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={signOut}
+                className="rounded-full h-10 w-10"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <ShoppingCart />
+              <Link to="/auth">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full h-10 w-10"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </nav>

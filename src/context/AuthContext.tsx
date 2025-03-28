@@ -1,18 +1,19 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
-import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   loading: boolean;
   isAdmin: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,19 +23,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
+    const fetchUserSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+        
+        if (data.session?.user) {
+          checkIfUserIsAdmin(data.session.user.id);
+        }
+      } catch (error: any) {
+        console.error('Error fetching session:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
         if (currentSession?.user) {
-          // Check if user is an admin
-          setTimeout(() => {
-            checkUserRole(currentSession.user.id);
-          }, 0);
+          checkIfUserIsAdmin(currentSession.user.id);
         } else {
           setIsAdmin(false);
         }
@@ -42,67 +61,87 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
       }
     );
-    
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      if (currentSession?.user) {
-        checkUserRole(currentSession.user.id);
-      }
-      
-      setLoading(false);
-    });
-    
+
     return () => {
-      subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
   }, []);
-  
-  const checkUserRole = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .eq('role', 'admin')
-      .single();
+
+  const checkIfUserIsAdmin = async (userId: string) => {
+    try {
+      // Use the has_role function from our database to check if user is admin
+      const { data, error } = await supabase.rpc('has_role', {
+        _user_id: userId,
+        _role: 'admin'
+      });
       
-    if (data) {
-      setIsAdmin(true);
-    } else {
+      if (error) throw error;
+      setIsAdmin(data || false);
+    } catch (error) {
+      console.error('Error checking admin status:', error);
       setIsAdmin(false);
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
       if (error) throw error;
+      
+      toast({
+        title: 'Inicio de sesión exitoso',
+        description: '¡Bienvenido de nuevo!',
+      });
+      
+      navigate('/');
     } catch (error: any) {
       toast({
         title: 'Error al iniciar sesión',
         description: error.message,
         variant: 'destructive',
       });
-      throw error;
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+
+      if (error) throw error;
+      
+    } catch (error: any) {
+      toast({
+        title: 'Error al iniciar sesión con Google',
+        description: error.message,
+        variant: 'destructive',
+      });
     }
   };
 
   const signUp = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({ 
-        email, 
+      const { data, error } = await supabase.auth.signUp({
+        email,
         password,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
+
       if (error) throw error;
       
       toast({
         title: 'Registro exitoso',
-        description: 'Por favor verifica tu correo electrónico para confirmar tu cuenta.',
+        description: 'Revisa tu correo para confirmar tu cuenta',
       });
     } catch (error: any) {
       toast({
@@ -110,13 +149,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message,
         variant: 'destructive',
       });
-      throw error;
     }
   };
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: 'Sesión cerrada',
+        description: 'Has cerrado sesión correctamente',
+      });
+      
+      navigate('/');
     } catch (error: any) {
       toast({
         title: 'Error al cerrar sesión',
@@ -126,34 +172,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-        }
-      });
-      if (error) throw error;
-    } catch (error: any) {
-      toast({
-        title: 'Error al iniciar sesión con Google',
-        description: error.message,
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
   const value = {
     session,
     user,
-    signIn,
-    signUp,
-    signOut,
-    signInWithGoogle,
     loading,
-    isAdmin
+    isAdmin,
+    signIn,
+    signInWithGoogle,
+    signUp,
+    signOut
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

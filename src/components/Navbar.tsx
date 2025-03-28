@@ -1,14 +1,22 @@
+
 import React from 'react';
 import { useLanguage } from '@/context/LanguageContext';
-import { ShoppingCart } from './ShoppingCart';
-import { ModeToggle } from "@/components/ui/mode-toggle"
+import ShoppingCart from './ShoppingCart';
+import { Button } from "@/components/ui/button";
+import { MoonIcon, SunIcon } from "lucide-react";
+import { useTheme } from 'next-themes';
 import { Link } from 'react-router-dom';
 
 const Navbar: React.FC = () => {
-  const { t, changeLanguage } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
+  const { theme, setTheme } = useTheme();
 
   const handleLanguageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    changeLanguage(event.target.value);
+    setLanguage(event.target.value);
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   return (
@@ -25,13 +33,20 @@ const Navbar: React.FC = () => {
             <select
               className="block appearance-none w-full bg-gray-50 border border-gray-200 text-gray-500 py-2 px-4 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               onChange={handleLanguageChange}
-              defaultValue={localStorage.getItem('language') || 'en'}
+              defaultValue={language}
             >
               <option value="en">English</option>
               <option value="es">Español</option>
             </select>
             <ShoppingCart />
-            <ModeToggle />
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={toggleTheme}
+              className="rounded-full h-10 w-10"
+            >
+              {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+            </Button>
           </div>
         </div>
       </div>

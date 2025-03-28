@@ -48,20 +48,37 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         }
       }
       
-      // Upload file
-      const { error: uploadError, data } = await supabase.storage
-        .from(bucketName)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true,
-          onUploadProgress: (progress) => {
-            setProgress(Math.round((progress.loaded / progress.total) * 100));
-          }
-        });
+      // Track upload progress manually
+      const uploadFile = async () => {
+        const { error: uploadError, data } = await supabase.storage
+          .from(bucketName)
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
+          
+        if (uploadError) {
+          throw new Error(`Error al subir el archivo: ${uploadError.message}`);
+        }
         
-      if (uploadError) {
-        throw new Error(`Error al subir el archivo: ${uploadError.message}`);
-      }
+        return data;
+      };
+      
+      // Simple progress simulation - in a real app you might want to use XHR for actual progress
+      const updateProgress = () => {
+        let currentProgress = 0;
+        const interval = setInterval(() => {
+          currentProgress += 5;
+          setProgress(Math.min(currentProgress, 95)); // Cap at 95% until complete
+          if (currentProgress >= 95) clearInterval(interval);
+        }, 100);
+        return interval;
+      };
+      
+      const progressInterval = updateProgress();
+      const uploadData = await uploadFile();
+      clearInterval(progressInterval);
+      setProgress(100);
       
       // Get public URL
       const { data: { publicUrl } } = supabase.storage

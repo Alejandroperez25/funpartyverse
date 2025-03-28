@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
@@ -7,11 +9,11 @@ import Loading from '@/components/Loading';
 import OrderTable from '@/components/orders/OrderTable';
 import OrderEditDialog from '@/components/orders/OrderEditDialog';
 import { useOrders } from '@/hooks/useOrders';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
 const OrderAdmin: React.FC = () => {
   const navigate = useNavigate();
-  const [authStatus, setAuthStatus] = useState<'checking' | 'admin' | 'unauthorized'>('checking');
+  const { isAdmin } = useAuth();
   const {
     orders,
     loading,
@@ -24,61 +26,15 @@ const OrderAdmin: React.FC = () => {
   } = useOrders();
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        // 1. Verificar sesión
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session) {
-          throw new Error('No autenticado');
-        }
-
-        // 2. Obtener perfil del usuario (usando el campo 'role')
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profileError || !profile) {
-          throw new Error('Perfil no encontrado');
-        }
-
-        // 3. Verificar si tiene rol de admin
-        if (profile.role === 'admin') {
-          setAuthStatus('admin');
-        } else {
-          throw new Error('No tiene rol de administrador');
-        }
-
-      } catch (error) {
-        setAuthStatus('unauthorized');
-        toast({
-          title: 'Acceso restringido',
-          description: 'Se requieren permisos de administrador',
-          variant: 'destructive',
-        });
-        navigate('/');
-      }
-    };
-
-    checkAdminStatus();
-  }, [navigate]);
-
-  // Resto del código permanece igual...
-  if (authStatus === 'checking') {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <Loading />
-        <Footer />
-      </div>
-    );
-  }
-
-  if (authStatus !== 'admin') {
-    return null;
-  }
+    if (!isAdmin) {
+      navigate('/');
+      toast({
+        title: 'Acceso Restringido',
+        description: 'No tienes permisos para acceder a esta página',
+        variant: 'destructive',
+      });
+    }
+  }, [isAdmin, navigate]);
 
   if (loading) {
     return (

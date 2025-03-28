@@ -33,10 +33,10 @@ const OrderAdmin: React.FC = () => {
           throw new Error('No autenticado');
         }
 
-        // 2. Obtener perfil del usuario
+        // 2. Obtener perfil del usuario (usando el campo 'role')
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('is_admin')
+          .select('role')
           .eq('id', session.user.id)
           .single();
 
@@ -44,18 +44,18 @@ const OrderAdmin: React.FC = () => {
           throw new Error('Perfil no encontrado');
         }
 
-        // 3. Verificar si es admin
-        if (profile.is_admin) {
+        // 3. Verificar si tiene rol de admin
+        if (profile.role === 'admin') {
           setAuthStatus('admin');
         } else {
-          throw new Error('No es administrador');
+          throw new Error('No tiene rol de administrador');
         }
 
       } catch (error) {
         setAuthStatus('unauthorized');
         toast({
           title: 'Acceso restringido',
-          description: 'No tienes permisos de administrador',
+          description: 'Se requieren permisos de administrador',
           variant: 'destructive',
         });
         navigate('/');
@@ -65,7 +65,7 @@ const OrderAdmin: React.FC = () => {
     checkAdminStatus();
   }, [navigate]);
 
-  // Estado de carga mientras se verifica autenticación
+  // Resto del código permanece igual...
   if (authStatus === 'checking') {
     return (
       <div className="min-h-screen flex flex-col">
@@ -76,12 +76,10 @@ const OrderAdmin: React.FC = () => {
     );
   }
 
-  // Si no es admin, ya fue redirigido en el useEffect
   if (authStatus !== 'admin') {
     return null;
   }
 
-  // Estado de carga mientras se obtienen los pedidos
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">

@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    // Obtener secretos y configurar clientes
+    // Get configuration and set up clients
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
@@ -25,64 +25,42 @@ serve(async (req) => {
       throw new Error('Missing STRIPE_SECRET_KEY env variable');
     }
     
+    console.log('Creating Supabase client with URL:', supabaseUrl);
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    console.log('Creating Stripe client with API version 2023-10-16');
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16',
     });
 
-    // Obtener datos de la solicitud
-    const { items, returnUrl, paymentMethod } = await req.json();
+    // Get request data
+    const { items, returnUrl } = await req.json();
     
     if (!items || !Array.isArray(items) || items.length === 0) {
       throw new Error('Los items son requeridos y deben ser un arreglo no vacío');
     }
 
-    // Obtener el usuario actual
+    // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
       throw new Error('Usuario no autenticado');
     }
 
-    // Calcular el monto total
+    // Calculate total amount
     const totalAmount = items.reduce((total, item) => {
       return total + (item.price * item.quantity);
     }, 0);
 
-    // Configurar los métodos de pago según lo solicitado
-    const paymentMethodTypes = ['card'];
-    
-    // Añadir Apple Pay si se solicitó
-    if (paymentMethod === 'apple_pay') {
-      paymentMethodTypes.push('apple_pay');
-    }
-    
-    // Añadir Google Pay si se solicitó
-    if (paymentMethod === 'google_pay') {
-      paymentMethodTypes.push('google_pay');
-    }
+    console.log('Creating Stripe checkout session with items:', JSON.stringify(items.map(item => ({
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity
+    }))));
 
-    console.log('Creating Stripe checkout session with:', {
-      paymentMethodTypes,
-      lineItems: items.map(item => ({
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: item.name,
-            images: item.image ? [item.image] : [],
-          },
-          unit_amount: Math.round(item.price * 100),
-        },
-        quantity: item.quantity,
-      })),
-      mode: 'payment',
-      successUrl: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: returnUrl,
-    });
-
-    // Crear la sesión de checkout de Stripe
+    // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: paymentMethodTypes,
+      payment_method_types: ['card'],
       line_items: items.map(item => ({
         price_data: {
           currency: 'usd',
@@ -90,7 +68,7 @@ serve(async (req) => {
             name: item.name,
             images: item.image ? [item.image] : [],
           },
-          unit_amount: Math.round(item.price * 100), // Convertir a centavos
+          unit_amount: Math.round(item.price * 100), // Convert to cents
         },
         quantity: item.quantity,
       })),
@@ -100,13 +78,13 @@ serve(async (req) => {
         },
       },
       mode: 'payment',
-      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: returnUrl,
+      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}&success=true`,
+      cancel_url: `${returnUrl}?success=false`,
     });
 
     console.log('Stripe session created successfully:', session.id);
 
-    // Crear la orden en la base de datos
+    // Create order in database
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -122,7 +100,7 @@ serve(async (req) => {
       throw new Error('No se pudo crear la orden');
     }
 
-    // Agregar los items a la orden
+    // Add items to order
     const orderItems = items.map(item => ({
       order_id: order.id,
       product_id: item.id,

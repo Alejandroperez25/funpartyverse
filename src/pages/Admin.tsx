@@ -1,87 +1,62 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { useNavigate } from 'react-router-dom';
-import { useTheme } from 'next-themes';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter,
+  DialogDescription
+} from '@/components/ui/dialog';
+import { Eye, Pencil, Trash } from 'lucide-react';
+import Loading from '@/components/Loading';
 import FileUploader from '@/components/FileUploader';
-import { Link } from 'react-router-dom';
 
 interface Product {
-  id: string | number; // Updated to accept both string and number
+  id: string | number;
   name: string;
-  description: string | null;
+  description: string;
   price: number;
   stock: number;
-  image: string | null;
-  created_at: string;
+  image: string;
 }
 
 const Admin: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [currentProduct, setCurrentProduct] = useState<Partial<Product> | null>(null);
-  const [isNewProduct, setIsNewProduct] = useState(false);
-  const navigate = useNavigate();
-  const { theme } = useTheme();
-
-  // Form fields
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [stock, setStock] = useState('');
-  const [image, setImage] = useState('');
-
+  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [newProduct, setNewProduct] = useState<Omit<Product, 'id'>>({
+    name: '',
+    description: '',
+    price: 0,
+    stock: 0,
+    image: 'https://placehold.co/600x400?text=Sin+Imagen'
+  });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const { user } = useAuth();
+  
   useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        setIsAdmin(false);
-        setLoading(false);
-        navigate('/');
-        return;
-      }
-      
-      // Here you would check if the user has admin role
-      // For simplicity, we're just checking if they're authenticated
-      setIsAdmin(true);
-      fetchProducts();
-    };
-    
-    checkAdmin();
-  }, [navigate]);
-
+    fetchProducts();
+  }, []);
+  
   const fetchProducts = async () => {
+    setLoading(true);
     const { data, error } = await supabase
       .from('products')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('name');
       
     if (error) {
       toast({
@@ -89,337 +64,314 @@ const Admin: React.FC = () => {
         description: 'No se pudieron cargar los productos',
         variant: 'destructive',
       });
+      console.error('Error fetching products:', error);
     } else {
       setProducts(data || []);
     }
     setLoading(false);
   };
-
-  const handleAddProduct = async () => {
-    if (!name || !price || !stock) {
+  
+  const handleOpenProductDialog = (product?: Product) => {
+    if (product) {
+      setSelectedProduct(product);
+      setNewProduct({
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        stock: product.stock,
+        image: product.image
+      });
+    } else {
+      setSelectedProduct(null);
+      setNewProduct({
+        name: '',
+        description: '',
+        price: 0,
+        stock: 0,
+        image: 'https://placehold.co/600x400?text=Sin+Imagen'
+      });
+    }
+    setIsProductDialogOpen(true);
+  };
+  
+  const handleFileChange = (file: File) => {
+    setImageFile(file);
+  };
+  
+  const handleSaveProduct = async () => {
+    if (!newProduct.name || !newProduct.price) {
       toast({
         title: 'Error',
-        description: 'Por favor, complete todos los campos requeridos.',
+        description: 'El nombre y el precio son obligatorios',
         variant: 'destructive',
       });
       return;
     }
     
-    const newProduct = {
-      name,
-      description: description || null,
-      price: parseFloat(price),
-      stock: parseInt(stock),
-      image: image || null,
-    };
+    setIsSubmitting(true);
     
-    const { data, error } = await supabase
-      .from('products')
-      .insert([newProduct])
-      .select();
+    try {
+      let imageUrl = newProduct.image;
       
-    if (error) {
+      // Handle image upload if a new file was selected
+      if (imageFile) {
+        const fileName = `${Date.now()}-${imageFile.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('products')
+          .upload(fileName, imageFile);
+          
+        if (uploadError) {
+          throw new Error('Error al subir la imagen');
+        }
+        
+        const { data: urlData } = await supabase.storage
+          .from('products')
+          .getPublicUrl(fileName);
+          
+        imageUrl = urlData?.publicUrl || imageUrl;
+      }
+      
+      if (selectedProduct) {
+        // Update existing product
+        const { error } = await supabase
+          .from('products')
+          .update({
+            name: newProduct.name,
+            description: newProduct.description,
+            price: newProduct.price,
+            stock: newProduct.stock,
+            image: imageUrl
+          })
+          .eq('id', selectedProduct.id);
+          
+        if (error) throw error;
+        
+        toast({
+          title: 'Éxito',
+          description: 'Producto actualizado correctamente',
+        });
+      } else {
+        // Create new product
+        const { error } = await supabase
+          .from('products')
+          .insert({
+            name: newProduct.name,
+            description: newProduct.description,
+            price: newProduct.price,
+            stock: newProduct.stock,
+            image: imageUrl,
+            user_id: user?.id
+          });
+          
+        if (error) throw error;
+        
+        toast({
+          title: 'Éxito',
+          description: 'Producto creado correctamente',
+        });
+      }
+      
+      // Refresh product list and close dialog
+      fetchProducts();
+      setIsProductDialogOpen(false);
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'No se pudo añadir el producto.',
+        description: error.message || 'Ha ocurrido un error al guardar el producto',
         variant: 'destructive',
       });
-      console.error('Error adding product:', error);
-    } else {
-      toast({
-        title: 'Producto añadido',
-        description: `${name} ha sido añadido correctamente.`,
-      });
-      setProducts([...products, ...data]);
-      setOpen(false);
+      console.error('Error saving product:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  const handleUpdateProduct = async () => {
-    if (!currentProduct?.id) return;
-    
-    const updatedProduct = {
-      name,
-      description: description || null,
-      price: parseFloat(price),
-      stock: parseInt(stock),
-      image: image || null,
-    };
-    
-    const { data, error } = await supabase
-      .from('products')
-      .update(updatedProduct)
-      .eq('id', currentProduct.id)
-      .select();
-      
-    if (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el producto.',
-        variant: 'destructive',
-      });
-      console.error('Error updating product:', error);
-    } else {
-      toast({
-        title: 'Producto actualizado',
-        description: `${name} ha sido actualizado correctamente.`,
-      });
-      setProducts(products.map(p => (p.id === currentProduct.id ? { ...p, ...updatedProduct } : p)));
-      setOpen(false);
-    }
+  
+  const handleOpenDeleteDialog = (product: Product) => {
+    setSelectedProduct(product);
+    setIsDeleteDialogOpen(true);
   };
-
-  const handleDeleteProduct = async (id: string | number) => {
-    const confirmDelete = window.confirm('¿Estás seguro de que quieres eliminar este producto?');
-    if (!confirmDelete) return;
+  
+  const handleDeleteProduct = async () => {
+    if (!selectedProduct) return;
     
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', id);
+    setIsSubmitting(true);
+    
+    try {
+      // Convert the ID to string to ensure it works with both string and number types
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', String(selectedProduct.id));
+        
+      if (error) throw error;
       
-    if (error) {
+      toast({
+        title: 'Éxito',
+        description: 'Producto eliminado correctamente',
+      });
+      
+      // Refresh product list and close dialog
+      fetchProducts();
+      setIsDeleteDialogOpen(false);
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'No se pudo eliminar el producto.',
+        description: error.message || 'Ha ocurrido un error al eliminar el producto',
         variant: 'destructive',
       });
       console.error('Error deleting product:', error);
-    } else {
-      toast({
-        title: 'Producto eliminado',
-        description: 'El producto ha sido eliminado correctamente.',
-      });
-      setProducts(products.filter(p => p.id !== id));
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  const handleFileUploaded = (url: string) => {
-    setImage(url);
-  };
-
-  if (loading) {
+  
+  const AdminView = () => {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-grow flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-funneepurple"></div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-grow flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Acceso Restringido</h1>
-            <p className="mb-4">No tienes permiso para acceder a esta página.</p>
-            <Button onClick={() => navigate('/')}>
-              Volver al Inicio
-            </Button>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-grow py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">Administración de Productos</h1>
-            <div className="flex gap-4">
-              <Link to="/admin/orders">
-                <Button variant="outline">
-                  Administrar Pedidos
-                </Button>
-              </Link>
-              <Button 
-                onClick={() => {
-                  setCurrentProduct(null);
-                  setName('');
-                  setDescription('');
-                  setPrice('');
-                  setStock('');
-                  setImage('');
-                  setIsNewProduct(true);
-                  setOpen(true);
-                }}
-                className="bg-funneepurple hover:bg-funneepurple/90"
-              >
-                Añadir Producto
-              </Button>
-            </div>
-          </div>
-          
-          {products.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <p className="text-xl text-gray-600 dark:text-gray-300">No hay productos disponibles</p>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Imagen</TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Precio</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {products.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <div className="h-12 w-12 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700">
-                          <img 
-                            src={product.image || 'https://placehold.co/100x100?text=No+Image'} 
-                            alt={product.name}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>${product.price.toFixed(2)}</TableCell>
-                      <TableCell>{product.stock}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setCurrentProduct(product);
-                              setName(product.name);
-                              setDescription(product.description || '');
-                              setPrice(product.price.toString());
-                              setStock(product.stock.toString());
-                              setImage(product.image || '');
-                              setIsNewProduct(false);
-                              setOpen(true);
-                            }}
-                          >
-                            Editar
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => handleDeleteProduct(product.id)}
-                          >
-                            Eliminar
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-          
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent className="sm:max-w-[525px]">
-              <DialogHeader>
-                <DialogTitle>{isNewProduct ? 'Añadir Producto' : 'Editar Producto'}</DialogTitle>
-                <DialogDescription>
-                  Complete los detalles del producto a continuación.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Nombre
-                  </Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="description" className="text-right">
-                    Descripción
-                  </Label>
-                  <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="price" className="text-right">
-                    Precio
-                  </Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="stock" className="text-right">
-                    Stock
-                  </Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    value={stock}
-                    onChange={(e) => setStock(e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right">
-                    Imagen
-                  </Label>
-                  <div className="col-span-3">
-                    <FileUploader 
-                      onFileUploaded={handleFileUploaded}
-                      bucketName="products"
-                    />
-                    
-                    {image && (
-                      <div className="mt-4">
-                        <p className="text-sm text-gray-500 mb-2">Vista previa:</p>
-                        <div className="h-32 w-32 rounded-md overflow-hidden bg-gray-100">
-                          <img 
-                            src={image} 
-                            alt="Preview" 
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      </div>
-                    )}
+      <div className="container mx-auto py-12">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Administrar Productos</h1>
+          <Button onClick={() => handleOpenProductDialog()}>Agregar Producto</Button>
+        </div>
+        
+        {loading ? (
+          <Loading />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {products.map(product => (
+              <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                <img src={product.image} alt={product.name} className="w-full h-48 object-cover" />
+                <div className="p-4">
+                  <h2 className="text-xl font-semibold mb-2">{product.name}</h2>
+                  <p className="text-gray-600 line-clamp-3">{product.description}</p>
+                  <div className="mt-4 flex justify-between items-center">
+                    <div>
+                      <span className="text-gray-700 font-bold">${product.price.toFixed(2)}</span>
+                      <span className="text-gray-500 ml-2">Stock: {product.stock}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="icon">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="icon" onClick={() => handleOpenProductDialog(product)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="destructive" size="icon" onClick={() => handleOpenDeleteDialog(product)}>
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-              <DialogFooter>
-                <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button 
-                  type="submit" 
-                  onClick={isNewProduct ? handleAddProduct : handleUpdateProduct}
-                  className="bg-funneepurple hover:bg-funneepurple/90"
-                >
-                  {isNewProduct ? 'Añadir' : 'Actualizar'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      
+      <main className="flex-grow">
+        {user ? (
+          <AdminView />
+        ) : (
+          <div className="container mx-auto py-12 text-center">
+            <h1 className="text-3xl font-bold mb-4">Acceso Denegado</h1>
+            <p className="text-gray-600">Debes iniciar sesión para acceder a esta página.</p>
+          </div>
+        )}
+        
+        {/* Product Dialog */}
+        <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>{selectedProduct ? 'Editar Producto' : 'Agregar Producto'}</DialogTitle>
+              <DialogDescription>
+                {selectedProduct ? 'Modifica los campos del producto.' : 'Ingresa los datos del nuevo producto.'}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">Nombre</Label>
+                <Input 
+                  id="name" 
+                  value={newProduct.name} 
+                  onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} 
+                  className="col-span-3" 
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">Descripción</Label>
+                <Textarea 
+                  id="description" 
+                  value={newProduct.description} 
+                  onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })} 
+                  className="col-span-3" 
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="price" className="text-right">Precio</Label>
+                <Input 
+                  type="number"
+                  id="price" 
+                  value={newProduct.price} 
+                  onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })} 
+                  className="col-span-3" 
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="stock" className="text-right">Stock</Label>
+                <Input 
+                  type="number"
+                  id="stock" 
+                  value={newProduct.stock} 
+                  onChange={(e) => setNewProduct({ ...newProduct, stock: parseInt(e.target.value) })} 
+                  className="col-span-3" 
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="image" className="text-right">Imagen</Label>
+                <div className="col-span-3">
+                  <FileUploader onFileChange={handleFileChange} />
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setIsProductDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveProduct} disabled={isSubmitting}>
+                {isSubmitting ? 'Guardando...' : 'Guardar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Eliminar Producto</DialogTitle>
+              <DialogDescription>
+                ¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setIsDeleteDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteProduct} disabled={isSubmitting}>
+                {isSubmitting ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
+      
       <Footer />
     </div>
   );

@@ -1,25 +1,44 @@
+
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter,
-  DialogDescription
-} from '@/components/ui/dialog';
-import { Eye, Pencil, Trash } from 'lucide-react';
-import Loading from '@/components/Loading';
-import FileUploader from '@/components/FileUploader';
+import { motion } from 'framer-motion';
+import { Edit, Trash, PlusCircle } from 'lucide-react';
+import { FileUploader } from '@/components/FileUploader';
 
+// Types for our component
 interface Product {
   id: string | number;
   name: string;
@@ -30,59 +49,132 @@ interface Product {
 }
 
 const Admin: React.FC = () => {
+  const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [newProduct, setNewProduct] = useState<Omit<Product, 'id'>>({
+  const [newProduct, setNewProduct] = useState<Partial<Product>>({
     name: '',
     description: '',
     price: 0,
     stock: 0,
     image: 'https://placehold.co/600x400?text=Sin+Imagen'
   });
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const { user } = useAuth();
-  
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   useEffect(() => {
-    fetchProducts();
-  }, []);
-  
-  const fetchProducts = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('name');
-      
-    if (error) {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    if (user && !isAdmin) {
+      navigate('/');
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los productos',
+        title: 'Acceso denegado',
+        description: 'No tienes permisos para acceder a esta página',
         variant: 'destructive',
       });
-      console.error('Error fetching products:', error);
-    } else {
-      setProducts(data || []);
+      return;
     }
-    setLoading(false);
-  };
-  
-  const handleOpenProductDialog = (product?: Product) => {
-    if (product) {
-      setSelectedProduct(product);
-      setNewProduct({
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        stock: product.stock,
-        image: product.image
+
+    fetchProducts();
+  }, [user, isAdmin, navigate]);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      
+      setProducts(data || []);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudieron cargar los productos',
+        variant: 'destructive',
       });
-    } else {
-      setSelectedProduct(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (file: File): Promise<string> => {
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `/Colchon.jpg`;
+
+      // Upload the file to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('almacenamiento')
+        .upload(filePath, file, {
+          upsert: true,
+          contentType: file.type,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('almacenamiento')
+        .getPublicUrl(filePath);
+
+      return urlData.publicUrl;
+    } catch (error: any) {
+      toast({
+        title: 'Error de carga',
+        description: error.message || 'No se pudo cargar la imagen',
+        variant: 'destructive',
+      });
+      return 'https://placehold.co/600x400?text=Error+de+Carga';
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleAddProduct = async () => {
+    try {
+      if (!newProduct.name || !newProduct.description || newProduct.price === undefined || newProduct.stock === undefined) {
+        toast({
+          title: 'Error',
+          description: 'Por favor completa todos los campos',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Handle image upload if a file was selected
+      let imageUrl = newProduct.image;
+      if (uploadedFile) {
+        imageUrl = await handleFileUpload(uploadedFile);
+      }
+
+      const { data, error } = await supabase
+        .from('products')
+        .insert({
+          ...newProduct,
+          image: imageUrl,
+        })
+        .select();
+
+      if (error) throw error;
+
+      toast({
+        title: 'Éxito',
+        description: 'Producto añadido correctamente',
+      });
+
+      // Reset form and close dialog
       setNewProduct({
         name: '',
         description: '',
@@ -90,288 +182,400 @@ const Admin: React.FC = () => {
         stock: 0,
         image: 'https://placehold.co/600x400?text=Sin+Imagen'
       });
-    }
-    setIsProductDialogOpen(true);
-  };
-  
-  const handleFileChange = (file: File) => {
-    setImageFile(file);
-  };
-  
-  const handleSaveProduct = async () => {
-    if (!newProduct.name || !newProduct.price) {
-      toast({
-        title: 'Error',
-        description: 'El nombre y el precio son obligatorios',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    try {
-      let imageUrl = newProduct.image;
+      setUploadedFile(null);
+      setOpenDialog(false);
       
-      // Handle image upload if a new file was selected
-      if (imageFile) {
-        const fileName = `${Date.now()}-${imageFile.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('products')
-          .upload(fileName, imageFile);
-          
-        if (uploadError) {
-          throw new Error('Error al subir la imagen');
-        }
-        
-        const { data: urlData } = await supabase.storage
-          .from('products')
-          .getPublicUrl(fileName);
-          
-        imageUrl = urlData?.publicUrl || imageUrl;
-      }
-      
-      if (selectedProduct) {
-        // Update existing product
-        const { error } = await supabase
-          .from('products')
-          .update({
-            name: newProduct.name,
-            description: newProduct.description,
-            price: newProduct.price,
-            stock: newProduct.stock,
-            image: imageUrl
-          })
-          .eq('id', selectedProduct.id);
-          
-        if (error) throw error;
-        
-        toast({
-          title: 'Éxito',
-          description: 'Producto actualizado correctamente',
-        });
-      } else {
-        // Create new product
-        const { error } = await supabase
-          .from('products')
-          .insert({
-            name: newProduct.name,
-            description: newProduct.description,
-            price: newProduct.price,
-            stock: newProduct.stock,
-            image: imageUrl,
-            user_id: user?.id
-          });
-          
-        if (error) throw error;
-        
-        toast({
-          title: 'Éxito',
-          description: 'Producto creado correctamente',
-        });
-      }
-      
-      // Refresh product list and close dialog
+      // Refresh products list
       fetchProducts();
-      setIsProductDialogOpen(false);
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Ha ocurrido un error al guardar el producto',
+        description: error.message || 'No se pudo añadir el producto',
         variant: 'destructive',
       });
-      console.error('Error saving product:', error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
-  
-  const handleOpenDeleteDialog = (product: Product) => {
-    setSelectedProduct(product);
-    setIsDeleteDialogOpen(true);
-  };
-  
-  const handleDeleteProduct = async () => {
-    if (!selectedProduct) return;
-    
-    setIsSubmitting(true);
-    
+
+  const handleEditProduct = async () => {
     try {
-      // Convert the ID to string to ensure it works with both string and number types
+      if (!selectedProduct) return;
+      
+      // Handle image upload if a file was selected
+      let imageUrl = selectedProduct.image;
+      if (uploadedFile) {
+        imageUrl = await handleFileUpload(uploadedFile);
+      }
+
+      const { error } = await supabase
+        .from('products')
+        .update({
+          name: selectedProduct.name,
+          description: selectedProduct.description,
+          price: selectedProduct.price,
+          stock: selectedProduct.stock,
+          image: imageUrl,
+        })
+        .eq('id', selectedProduct.id.toString());
+
+      if (error) throw error;
+
+      toast({
+        title: 'Éxito',
+        description: 'Producto actualizado correctamente',
+      });
+
+      // Reset and close dialog
+      setSelectedProduct(null);
+      setUploadedFile(null);
+      setOpenDialog(false);
+      
+      // Refresh products list
+      fetchProducts();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo actualizar el producto',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    try {
+      if (!selectedProduct) return;
+
       const { error } = await supabase
         .from('products')
         .delete()
-        .eq('id', String(selectedProduct.id));
-        
+        .eq('id', selectedProduct.id.toString());
+
       if (error) throw error;
-      
+
       toast({
         title: 'Éxito',
         description: 'Producto eliminado correctamente',
       });
+
+      // Reset and close dialog
+      setSelectedProduct(null);
+      setDeleteDialogOpen(false);
       
-      // Refresh product list and close dialog
+      // Refresh products list
       fetchProducts();
-      setIsDeleteDialogOpen(false);
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Ha ocurrido un error al eliminar el producto',
+        description: error.message || 'No se pudo eliminar el producto',
         variant: 'destructive',
       });
-      console.error('Error deleting product:', error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
-  
-  const AdminView = () => {
-    return (
-      <div className="container mx-auto py-12">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Administrar Productos</h1>
-          <Button onClick={() => handleOpenProductDialog()}>Agregar Producto</Button>
-        </div>
-        
-        {loading ? (
-          <Loading />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map(product => (
-              <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                <img src={product.image} alt={product.name} className="w-full h-48 object-cover" />
-                <div className="p-4">
-                  <h2 className="text-xl font-semibold mb-2">{product.name}</h2>
-                  <p className="text-gray-600 line-clamp-3">{product.description}</p>
-                  <div className="mt-4 flex justify-between items-center">
-                    <div>
-                      <span className="text-gray-700 font-bold">${product.price.toFixed(2)}</span>
-                      <span className="text-gray-500 ml-2">Stock: {product.stock}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="icon">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="icon" onClick={() => handleOpenProductDialog(product)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="destructive" size="icon" onClick={() => handleOpenDeleteDialog(product)}>
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
+
+  const handleFileChange = (file: File) => {
+    setUploadedFile(file);
   };
   
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
-      <main className="flex-grow">
-        {user ? (
-          <AdminView />
-        ) : (
-          <div className="container mx-auto py-12 text-center">
-            <h1 className="text-3xl font-bold mb-4">Acceso Denegado</h1>
-            <p className="text-gray-600">Debes iniciar sesión para acceder a esta página.</p>
+      <main className="flex-grow py-12 pt-28">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center mb-8">
+            <motion.h1 
+              className="text-3xl font-bold"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              Panel de Administración
+            </motion.h1>
+            <Button 
+              onClick={() => {
+                setSelectedProduct(null);
+                setNewProduct({
+                  name: '',
+                  description: '',
+                  price: 0,
+                  stock: 0,
+                  image: 'https://placehold.co/600x400?text=Sin+Imagen'
+                });
+                setOpenDialog(true);
+              }}
+              className="bg-funneepurple hover:bg-funneepurple/90 flex items-center gap-2"
+            >
+              <PlusCircle className="h-4 w-4" />
+              Añadir Producto
+            </Button>
           </div>
-        )}
-        
-        {/* Product Dialog */}
-        <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>{selectedProduct ? 'Editar Producto' : 'Agregar Producto'}</DialogTitle>
-              <DialogDescription>
-                {selectedProduct ? 'Modifica los campos del producto.' : 'Ingresa los datos del nuevo producto.'}
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">Nombre</Label>
-                <Input 
-                  id="name" 
-                  value={newProduct.name} 
-                  onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} 
-                  className="col-span-3" 
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="description" className="text-right">Descripción</Label>
-                <Textarea 
-                  id="description" 
-                  value={newProduct.description} 
-                  onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })} 
-                  className="col-span-3" 
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="price" className="text-right">Precio</Label>
-                <Input 
-                  type="number"
-                  id="price" 
-                  value={newProduct.price} 
-                  onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })} 
-                  className="col-span-3" 
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="stock" className="text-right">Stock</Label>
-                <Input 
-                  type="number"
-                  id="stock" 
-                  value={newProduct.stock} 
-                  onChange={(e) => setNewProduct({ ...newProduct, stock: parseInt(e.target.value) })} 
-                  className="col-span-3" 
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="image" className="text-right">Imagen</Label>
-                <div className="col-span-3">
-                  <FileUploader onFileChange={handleFileChange} />
+          
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Gestión de Productos</CardTitle>
+                <CardDescription>
+                  Administra el catálogo de productos de la tienda
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-funneepurple"></div>
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-lg text-gray-500 dark:text-gray-400">
+                      No hay productos en el catálogo
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Imagen</TableHead>
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>Descripción</TableHead>
+                          <TableHead>Precio</TableHead>
+                          <TableHead>Stock</TableHead>
+                          <TableHead className="text-right">Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {products.map((product) => (
+                          <TableRow key={product.id}>
+                            <TableCell>
+                              <div className="h-16 w-16 rounded overflow-hidden">
+                                <img 
+                                  src={product.image || 'https://placehold.co/600x400?text=Sin+Imagen'} 
+                                  alt={product.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">{product.name}</TableCell>
+                            <TableCell className="max-w-xs truncate">{product.description}</TableCell>
+                            <TableCell>${product.price.toFixed(2)}</TableCell>
+                            <TableCell>{product.stock}</TableCell>
+                            <TableCell className="text-right space-x-2">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedProduct(product);
+                                  setOpenDialog(true);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="text-red-500"
+                                onClick={() => {
+                                  setSelectedProduct(product);
+                                  setDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </main>
+      
+      {/* Add/Edit Product Dialog */}
+      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedProduct ? 'Editar Producto' : 'Añadir Nuevo Producto'}
+            </DialogTitle>
+            <DialogDescription>
+              Complete los detalles del producto y guarde los cambios.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-5 items-center gap-4">
+              <Label htmlFor="name" className="col-span-1">
+                Nombre
+              </Label>
+              <Input
+                id="name"
+                value={selectedProduct ? selectedProduct.name : newProduct.name}
+                onChange={(e) => {
+                  if (selectedProduct) {
+                    setSelectedProduct({
+                      ...selectedProduct,
+                      name: e.target.value,
+                    });
+                  } else {
+                    setNewProduct({
+                      ...newProduct,
+                      name: e.target.value,
+                    });
+                  }
+                }}
+                className="col-span-4"
+              />
+            </div>
+            <div className="grid grid-cols-5 items-center gap-4">
+              <Label htmlFor="description" className="col-span-1">
+                Descripción
+              </Label>
+              <Textarea
+                id="description"
+                value={selectedProduct ? selectedProduct.description : newProduct.description}
+                onChange={(e) => {
+                  if (selectedProduct) {
+                    setSelectedProduct({
+                      ...selectedProduct,
+                      description: e.target.value,
+                    });
+                  } else {
+                    setNewProduct({
+                      ...newProduct,
+                      description: e.target.value,
+                    });
+                  }
+                }}
+                className="col-span-4"
+              />
+            </div>
+            <div className="grid grid-cols-5 items-center gap-4">
+              <Label htmlFor="price" className="col-span-1">
+                Precio
+              </Label>
+              <Input
+                id="price"
+                type="number"
+                value={selectedProduct ? selectedProduct.price : newProduct.price}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (selectedProduct) {
+                    setSelectedProduct({
+                      ...selectedProduct,
+                      price: isNaN(value) ? 0 : value,
+                    });
+                  } else {
+                    setNewProduct({
+                      ...newProduct,
+                      price: isNaN(value) ? 0 : value,
+                    });
+                  }
+                }}
+                className="col-span-4"
+              />
+            </div>
+            <div className="grid grid-cols-5 items-center gap-4">
+              <Label htmlFor="stock" className="col-span-1">
+                Stock
+              </Label>
+              <Input
+                id="stock"
+                type="number"
+                value={selectedProduct ? selectedProduct.stock : newProduct.stock}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  if (selectedProduct) {
+                    setSelectedProduct({
+                      ...selectedProduct,
+                      stock: isNaN(value) ? 0 : value,
+                    });
+                  } else {
+                    setNewProduct({
+                      ...newProduct,
+                      stock: isNaN(value) ? 0 : value,
+                    });
+                  }
+                }}
+                className="col-span-4"
+              />
+            </div>
+            <div className="grid grid-cols-5 items-center gap-4">
+              <Label className="col-span-1">Imagen</Label>
+              <div className="col-span-4">
+                <FileUploader onFileChange={handleFileChange} />
+                {isUploading && (
+                  <div className="mt-2 text-sm text-gray-500">
+                    Subiendo imagen...
+                  </div>
+                )}
+                <div className="mt-2">
+                  <img
+                    src={uploadedFile ? URL.createObjectURL(uploadedFile) : (selectedProduct ? selectedProduct.image : newProduct.image)}
+                    alt="Vista previa"
+                    className="h-24 w-auto rounded"
+                  />
                 </div>
               </div>
             </div>
-            
-            <DialogFooter>
-              <Button variant="secondary" onClick={() => setIsProductDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSaveProduct} disabled={isSubmitting}>
-                {isSubmitting ? 'Guardando...' : 'Guardar'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <DialogContent className="sm:max-w-[400px]">
-            <DialogHeader>
-              <DialogTitle>Eliminar Producto</DialogTitle>
-              <DialogDescription>
-                ¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="secondary" onClick={() => setIsDeleteDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button variant="destructive" onClick={handleDeleteProduct} disabled={isSubmitting}>
-                {isSubmitting ? 'Eliminando...' : 'Eliminar'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </main>
-      
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={selectedProduct ? handleEditProduct : handleAddProduct}
+              className="bg-funneepurple hover:bg-funneepurple/90"
+              disabled={isUploading}
+            >
+              {isUploading ? 'Subiendo...' : selectedProduct ? 'Guardar Cambios' : 'Añadir Producto'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar Eliminación</DialogTitle>
+            <DialogDescription>
+              ¿Está seguro de que desea eliminar este producto? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {selectedProduct && (
+              <div className="flex items-center space-x-4">
+                <div className="h-16 w-16 rounded overflow-hidden">
+                  <img 
+                    src={selectedProduct.image || 'https://placehold.co/600x400?text=Sin+Imagen'} 
+                    alt={selectedProduct.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div>
+                  <h4 className="font-medium">{selectedProduct.name}</h4>
+                  <p className="text-sm text-gray-500">${selectedProduct.price.toFixed(2)}</p>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteProduct}
+            >
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Footer />
     </div>
   );

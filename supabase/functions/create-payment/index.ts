@@ -40,11 +40,28 @@ serve(async (req) => {
       throw new Error('Los items son requeridos y deben ser un arreglo no vacío');
     }
 
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
+    // Get authorization header
+    const authHeader = req.headers.get('Authorization');
     
-    if (!user) {
-      throw new Error('Usuario no autenticado');
+    if (!authHeader) {
+      console.log('Proceeding without authentication for guest checkout');
+      // Continue with guest checkout (no user_id will be associated)
+    } else {
+      // Try to get the user if authentication header is present
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+        
+        if (error) {
+          console.error('Error getting user:', error.message);
+          // Continue with guest checkout
+        } else if (user) {
+          console.log('User authenticated:', user.id);
+          // User is authenticated, continue with the order
+        }
+      } catch (authError) {
+        console.error('Authentication error:', authError);
+        // Continue with guest checkout
+      }
     }
 
     // Calculate total amount
@@ -72,11 +89,6 @@ serve(async (req) => {
         },
         quantity: item.quantity,
       })),
-      payment_intent_data: {
-        metadata: {
-          user_id: user.id,
-        },
-      },
       mode: 'payment',
       success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}&success=true`,
       cancel_url: `${returnUrl}?success=false`,
@@ -84,45 +96,60 @@ serve(async (req) => {
 
     console.log('Stripe session created successfully:', session.id);
 
-    // Create order in database
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: user.id,
-        total_amount: totalAmount,
-        status: 'pending',
-      })
-      .select()
-      .single();
+    // If we have a user, create an order in the database
+    let orderId = null;
+    if (authHeader) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+        
+        if (user) {
+          // Create order in database
+          const { data: order, error: orderError } = await supabase
+            .from('orders')
+            .insert({
+              user_id: user.id,
+              total_amount: totalAmount,
+              status: 'pending',
+            })
+            .select()
+            .single();
 
-    if (orderError) {
-      console.error('Error creating order:', orderError);
-      throw new Error('No se pudo crear la orden');
-    }
+          if (orderError) {
+            console.error('Error creating order:', orderError);
+            // Continue without saving the order
+          } else if (order) {
+            orderId = order.id;
 
-    // Add items to order
-    const orderItems = items.map(item => ({
-      order_id: order.id,
-      product_id: item.id,
-      product_name: item.name,
-      price: item.price,
-      quantity: item.quantity
-    }));
+            // Add items to order
+            const orderItems = items.map(item => ({
+              order_id: order.id,
+              product_id: item.id,
+              product_name: item.name,
+              price: item.price,
+              quantity: item.quantity
+            }));
 
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
+            const { error: itemsError } = await supabase
+              .from('order_items')
+              .insert(orderItems);
 
-    if (itemsError) {
-      console.error('Error adding order items:', itemsError);
-      throw new Error('No se pudieron guardar los detalles de la orden');
+            if (itemsError) {
+              console.error('Error adding order items:', itemsError);
+              // Continue without saving order items
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error in order creation:', error);
+        // Continue without saving the order
+      }
     }
 
     return new Response(
       JSON.stringify({
         url: session.url,
         sessionId: session.id,
-        orderId: order.id,
+        orderId: orderId,
       }),
       {
         status: 200,

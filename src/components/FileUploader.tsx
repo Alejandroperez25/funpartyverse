@@ -1,132 +1,73 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import { Upload } from 'lucide-react';
 
-interface FileUploaderProps {
-  onFileUploaded: (url: string) => void;
-  bucketName: string;
-  folderPath?: string;
+export interface FileUploaderProps {
+  onFileChange: (file: File) => void;
 }
 
-const FileUploader: React.FC<FileUploaderProps> = ({ 
-  onFileUploaded, 
-  bucketName,
-  folderPath = '' 
-}) => {
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
+export const FileUploader: React.FC<FileUploaderProps> = ({ onFileChange }) => {
+  const [dragActive, setDragActive] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      setUploading(true);
-      setProgress(0);
-      
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('Debes seleccionar una imagen para subir.');
-      }
-      
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = folderPath ? `${folderPath}/${fileName}` : fileName;
-      
-      // Check if bucket exists, if not create it
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-      
-      if (!bucketExists) {
-        const { error: createBucketError } = await supabase.storage.createBucket(bucketName, {
-          public: true
-        });
-        
-        if (createBucketError) {
-          throw new Error(`Error al crear el bucket: ${createBucketError.message}`);
-        }
-      }
-      
-      // Track upload progress manually
-      const uploadFile = async () => {
-        const { error: uploadError, data } = await supabase.storage
-          .from(bucketName)
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: true
-          });
-          
-        if (uploadError) {
-          throw new Error(`Error al subir el archivo: ${uploadError.message}`);
-        }
-        
-        return data;
-      };
-      
-      // Simple progress simulation - in a real app you might want to use XHR for actual progress
-      const updateProgress = () => {
-        let currentProgress = 0;
-        const interval = setInterval(() => {
-          currentProgress += 5;
-          setProgress(Math.min(currentProgress, 95)); // Cap at 95% until complete
-          if (currentProgress >= 95) clearInterval(interval);
-        }, 100);
-        return interval;
-      };
-      
-      const progressInterval = updateProgress();
-      const uploadData = await uploadFile();
-      clearInterval(progressInterval);
-      setProgress(100);
-      
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(filePath);
-      
-      onFileUploaded(publicUrl);
-      toast({
-        title: 'Archivo subido',
-        description: 'El archivo ha sido subido correctamente.',
-      });
-      
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      onFileChange(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      onFileChange(e.target.files[0]);
+    }
+  };
+
+  const onButtonClick = () => {
+    if (inputRef.current) {
+      inputRef.current.click();
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Input
-          id="image-upload"
+    <div className="flex flex-col items-center">
+      <div 
+        className={`border-2 border-dashed rounded-lg p-4 w-full text-center cursor-pointer transition-colors ${
+          dragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-300 dark:border-gray-700'
+        }`}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+        onClick={onButtonClick}
+      >
+        <Upload className="mx-auto h-8 w-8 text-gray-400" />
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Arrastra y suelta un archivo aquí, o haz clic para seleccionar
+        </p>
+        <input
+          ref={inputRef}
           type="file"
+          className="hidden"
           accept="image/*"
-          onChange={handleFileUpload}
-          disabled={uploading}
+          onChange={handleChange}
         />
-        {uploading && (
-          <div className="text-sm">{progress}%</div>
-        )}
       </div>
-      
-      {uploading && (
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div 
-            className="bg-funneepurple h-2.5 rounded-full" 
-            style={{ width: `${progress}%` }}
-          ></div>
-        </div>
-      )}
     </div>
   );
 };
-
-export default FileUploader;

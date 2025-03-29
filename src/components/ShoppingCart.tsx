@@ -37,7 +37,6 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
   
   // Estados para el diálogo de método de pago
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("stripe");
   
   // Estados para reserva de pago posterior
   const [reservationName, setReservationName] = useState("");
@@ -45,23 +44,13 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
   const [reservationPhone, setReservationPhone] = useState("");
   const [reservationNotes, setReservationNotes] = useState("");
 
-  // Modified Stripe checkout handler to use only one payment method
+  // Stripe checkout handler
   const handleCheckout = async () => {
     try {
       setProcessing(true);
       
-      if (!user) {
-        toast({
-          title: 'Error',
-          description: 'Debes iniciar sesión para realizar un pedido',
-          variant: 'destructive',
-        });
-        setProcessing(false);
-        window.location.href = '/auth';
-        return;
-      }
-      
       // Call Stripe checkout edge function
+      console.log("Calling create-payment function with items:", items);
       const { data, error } = await supabase.functions.invoke("create-payment", {
         body: {
           items: items.map(item => ({
@@ -114,22 +103,11 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
         return;
       }
       
-      // Check if user is logged in
-      if (!user) {
-        toast({
-          title: 'Error',
-          description: 'Debes iniciar sesión para realizar un pedido',
-          variant: 'destructive',
-        });
-        setProcessing(false);
-        return;
-      }
-      
       // Create a new order with 'reserved' status
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
-          user_id: user.id,
+          user_id: user?.id || null,
           total_amount: totalPrice,
           status: 'reserved'
         })

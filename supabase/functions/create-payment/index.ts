@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.51.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.26.0";
 import Stripe from 'https://esm.sh/stripe@12.18.0';
 
 const corsHeaders = {
@@ -21,6 +21,7 @@ serve(async (req) => {
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
     
     if (!stripeSecretKey) {
+      console.error('Missing STRIPE_SECRET_KEY env variable');
       throw new Error('Missing STRIPE_SECRET_KEY env variable');
     }
     

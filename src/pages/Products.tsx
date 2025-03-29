@@ -9,7 +9,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
 interface Product {
-  id: string;
+  id: string | number; // Updated to accept both string and number
   name: string;
   description: string;
   price: number;

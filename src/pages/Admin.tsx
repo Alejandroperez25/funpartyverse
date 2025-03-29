@@ -31,7 +31,7 @@ import FileUploader from '@/components/FileUploader';
 import { Link } from 'react-router-dom';
 
 interface Product {
-  id: string;
+  id: string | number; // Updated to accept both string and number
   name: string;
   description: string | null;
   price: number;
@@ -169,7 +169,7 @@ const Admin: React.FC = () => {
     }
   };
 
-  const handleDeleteProduct = async (id: string) => {
+  const handleDeleteProduct = async (id: string | number) => {
     const confirmDelete = window.confirm('¿Estás seguro de que quieres eliminar este producto?');
     if (!confirmDelete) return;
     
@@ -386,7 +386,7 @@ const Admin: React.FC = () => {
                   <div className="col-span-3">
                     <FileUploader 
                       onFileUploaded={handleFileUploaded}
-                      bucketName="product-images"
+                      bucketName="products"
                     />
                     
                     {image && (

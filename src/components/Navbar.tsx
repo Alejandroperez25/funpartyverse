@@ -1,25 +1,50 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import ShoppingCart from '@/components/ShoppingCart';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Menu, X } from 'lucide-react';
+import { LogOut, User, Menu, X, Home, ShoppingBag, Package2, ScrollText } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { motion } from 'framer-motion';
 
 const Navbar: React.FC = () => {
   const { user, isAdmin, signOut } = useAuth();
-  const { t, setLanguage } = useLanguage();
+  const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   
   const handleLanguageChange = (lang: 'es' | 'en') => {
-    setLanguage(lang);
+    // This will be handled by the LanguageToggle component internally
   };
+
+  // Add scroll listener to create animation effect
+  useEffect(() => {
+    const handleScroll = () => {
+      const isScrolled = window.scrollY > 10;
+      if (isScrolled !== scrolled) {
+        setScrolled(isScrolled);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [scrolled]);
+
+  const navItems = [
+    { name: t('navbar.products'), path: '/products', icon: ShoppingBag },
+    ...(user ? [{ name: t('navbar.orders'), path: '/orders', icon: Package2 }] : []),
+    ...(isAdmin ? [
+      { name: t('navbar.admin'), path: '/admin', icon: ScrollText },
+      { name: 'Gestión de Pedidos', path: '/admin/orders', icon: Package2 },
+    ] : []),
+  ];
 
   const MobileMenu = () => (
     <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -31,7 +56,7 @@ const Navbar: React.FC = () => {
       <SheetContent side="left" className="w-[80%]">
         <div className="flex flex-col h-full py-4">
           <div className="flex items-center justify-between mb-8">
-            <Link to="/" className="text-2xl font-bold text-funneepurple" onClick={() => setMobileMenuOpen(false)}>
+            <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-funneepurple to-funneeorange bg-clip-text text-transparent" onClick={() => setMobileMenuOpen(false)}>
               Funnee Prints
             </Link>
             <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
@@ -40,38 +65,22 @@ const Navbar: React.FC = () => {
           </div>
           
           <div className="flex flex-col space-y-4">
-            <Link 
-              to="/products" 
-              className="px-2 py-2 hover:bg-gray-100 rounded-md"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {t('navbar.products')}
-            </Link>
-            
-            {user && (
-              <Link 
-                to="/orders" 
-                className="px-2 py-2 hover:bg-gray-100 rounded-md"
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className="flex items-center px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                {t('navbar.orders')}
+                <item.icon className="mr-2 h-5 w-5" />
+                {item.name}
               </Link>
-            )}
-            
-            {isAdmin && (
-              <Link 
-                to="/admin" 
-                className="px-2 py-2 hover:bg-gray-100 rounded-md"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {t('navbar.admin')}
-              </Link>
-            )}
+            ))}
           </div>
           
           <div className="mt-auto flex flex-col space-y-4">
             <div className="flex items-center justify-between">
-              <LanguageToggle onLanguageChange={handleLanguageChange} />
+              <LanguageToggle />
               <ModeToggle />
             </div>
             
@@ -105,34 +114,49 @@ const Navbar: React.FC = () => {
   );
 
   return (
-    <nav className="border-b w-full bg-background">
+    <motion.nav 
+      className={`fixed top-0 left-0 right-0 z-50 border-b w-full transition-all duration-300 ${
+        scrolled ? 'bg-background/95 backdrop-blur-sm shadow-md' : 'bg-background'
+      }`}
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="container mx-auto px-4 py-2 flex items-center justify-between">
-        <Link to="/" className="text-2xl font-bold text-funneepurple">
-          Funnee Prints
+        <Link to="/">
+          <motion.div 
+            className="text-2xl font-bold"
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <span className="bg-gradient-to-r from-funneepurple to-funneeorange bg-clip-text text-transparent">
+              Funnee Prints
+            </span>
+          </motion.div>
         </Link>
         
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-2 sm:gap-4">
-          <Link to="/products" className="text-sm sm:text-base hover:text-funneepurple">
-            {t('navbar.products')}
-          </Link>
-          
-          {user && (
-            <Link to="/orders" className="text-sm sm:text-base hover:text-funneepurple">
-              {t('navbar.orders')}
-            </Link>
-          )}
-          
-          {isAdmin && (
-            <Link to="/admin" className="text-sm sm:text-base hover:text-funneepurple">
-              {t('navbar.admin')}
-            </Link>
-          )}
+          {navItems.map((item) => (
+            <motion.div
+              key={item.path}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Link 
+                to={item.path} 
+                className="text-sm sm:text-base flex items-center px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <item.icon className="mr-2 h-4 w-4" />
+                {item.name}
+              </Link>
+            </motion.div>
+          ))}
         </div>
         
         <div className="flex items-center gap-2">
           <div className="hidden md:block">
-            <LanguageToggle onLanguageChange={handleLanguageChange} />
+            <LanguageToggle />
           </div>
           
           <div className="hidden md:block">
@@ -143,26 +167,36 @@ const Navbar: React.FC = () => {
           
           {user ? (
             <div className="hidden md:block">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={signOut}
-                className="rounded-full h-10 w-10"
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <LogOut className="h-5 w-5" />
-              </Button>
-            </div>
-          ) : (
-            <div className="hidden md:block">
-              <Link to="/auth">
                 <Button
                   variant="ghost"
                   size="icon"
+                  onClick={signOut}
                   className="rounded-full h-10 w-10"
                 >
-                  <User className="h-5 w-5" />
+                  <LogOut className="h-5 w-5" />
                 </Button>
-              </Link>
+              </motion.div>
+            </div>
+          ) : (
+            <div className="hidden md:block">
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Link to="/auth">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full h-10 w-10"
+                  >
+                    <User className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </motion.div>
             </div>
           )}
           
@@ -170,7 +204,7 @@ const Navbar: React.FC = () => {
           <MobileMenu />
         </div>
       </div>
-    </nav>
+    </motion.nav>
   );
 };
 

@@ -30,12 +30,6 @@ export const useOrders = () => {
       return;
     }
     
-    // Get user emails
-    const userIds = ordersData.map(order => order.user_id);
-    const { data: userData, error: userError } = await supabase.auth.admin.listUsers({
-      perPage: 1000,
-    });
-    
     // Map orders to include user emails and items
     const ordersWithDetails = await Promise.all(
       ordersData.map(async (order) => {
@@ -45,13 +39,22 @@ export const useOrders = () => {
           .select('*')
           .eq('order_id', order.id);
         
-        // Find user email
-        const user = userData?.users?.find(u => u.id === order.user_id);
+        // Get user email
+        const { data: userData, error: userError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', order.user_id)
+          .single();
+        
+        // Find user email from auth
+        const { data: authData } = await supabase.auth.admin.getUserById(
+          order.user_id
+        );
         
         return {
           ...order,
           items: itemsData || [],
-          user_email: user?.email || 'Unknown'
+          user_email: authData?.user?.email || 'Unknown'
         };
       })
     );

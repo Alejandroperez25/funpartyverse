@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -16,11 +15,13 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import { Clipboard, Copy } from 'lucide-react';
 
 interface OrderItem {
   id: string;
@@ -59,7 +60,6 @@ const Orders: React.FC = () => {
   const fetchOrders = async (userId: string) => {
     setLoading(true);
     
-    // Get all orders for the user
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('*')
@@ -76,7 +76,6 @@ const Orders: React.FC = () => {
       return;
     }
     
-    // For each order, get its items
     const ordersWithItems = await Promise.all(
       ordersData.map(async (order) => {
         const { data: itemsData, error: itemsError } = await supabase
@@ -95,6 +94,29 @@ const Orders: React.FC = () => {
     
     setOrders(ordersWithItems);
     setLoading(false);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({
+        title: 'Copiado!',
+        description: 'ID de pedido copiado al portapapeles',
+      });
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case 'completed':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Completado</Badge>;
+      case 'cancelled':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Cancelado</Badge>;
+      case 'reserved':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">Reservado</Badge>;
+      case 'pending':
+      default:
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pendiente</Badge>;
+    }
   };
 
   if (loading) {
@@ -130,7 +152,7 @@ const Orders: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-grow py-12">
+      <main className="flex-grow py-12 mt-16">
         <div className="container mx-auto px-4">
           <motion.h1 
             className="text-3xl font-bold mb-8"
@@ -169,26 +191,31 @@ const Orders: React.FC = () => {
                     <AccordionTrigger className="px-6 py-4 hover:no-underline">
                       <div className="flex-1 flex flex-col md:flex-row md:items-center md:justify-between w-full text-left">
                         <div className="flex flex-col">
-                          <span className="font-medium">
-                            Pedido #{index + 1}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">
+                              Pedido #{index + 1} 
+                            </span>
+                            <div className="inline-flex items-center space-x-1 text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                              <span className="font-mono">ID: {order.id.substring(0, 8)}</span>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-5 w-5 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyToClipboard(order.id);
+                                }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
                           <span className="text-sm text-gray-500">
                             {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm')}
                           </span>
                         </div>
                         <div className="flex space-x-4 mt-2 md:mt-0">
-                          <span className={`px-3 py-1 rounded-full text-xs ${
-                            order.status === 'completed' 
-                              ? 'bg-green-100 text-green-800' 
-                              : order.status === 'cancelled'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {order.status === 'pending' ? 'Pendiente' : 
-                             order.status === 'completed' ? 'Completado' : 
-                             order.status === 'cancelled' ? 'Cancelado' : 
-                             order.status}
-                          </span>
+                          {getStatusBadge(order.status)}
                           <span className="font-semibold">${order.total_amount.toFixed(2)}</span>
                         </div>
                       </div>

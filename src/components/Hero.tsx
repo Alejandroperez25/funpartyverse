@@ -3,16 +3,27 @@ import React from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { ChevronDown } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
+import { Link } from 'react-router-dom';
 
 const Hero: React.FC = () => {
   const { t } = useLanguage();
   const { scrollY } = useScroll();
+  const { items } = useCart();
   
   // Create scroll-based animations
   const titleOpacity = useTransform(scrollY, [0, 300], [1, 0]);
   const titleY = useTransform(scrollY, [0, 300], [0, -50]);
   const imageScale = useTransform(scrollY, [0, 300], [1, 1.1]);
   const backgroundY = useTransform(scrollY, [0, 300], [0, 100]);
+
+  const handleScrollToContent = () => {
+    window.scrollTo({
+      top: window.innerHeight,
+      behavior: 'smooth'
+    });
+  };
 
   return (
     <section id="home" className="relative min-h-screen flex items-center overflow-hidden pt-16">
@@ -39,7 +50,41 @@ const Hero: React.FC = () => {
             {t('hero.subtitle')}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+            <Link to="/products">
+              <Button 
+                size="lg" 
+                className="bg-funneepurple hover:bg-funneepurple/90"
+              >
+                Ver Productos
+              </Button>
+            </Link>
           </div>
+
+          {/* Cart items preview (if any) */}
+          {items.length > 0 && (
+            <motion.div 
+              className="mt-8 p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg shadow-lg"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <h3 className="text-lg font-semibold mb-2">En tu carrito:</h3>
+              <div className="flex flex-wrap gap-2">
+                {items.slice(0, 3).map(item => (
+                  <div key={item.id} className="flex items-center gap-2 bg-white dark:bg-gray-700 p-2 rounded-md shadow">
+                    <img src={item.image} alt={item.name} className="w-8 h-8 object-cover rounded" />
+                    <span className="text-sm font-medium">{item.name}</span>
+                    <span className="text-sm text-gray-500">x{item.quantity}</span>
+                  </div>
+                ))}
+                {items.length > 3 && (
+                  <div className="bg-white dark:bg-gray-700 p-2 rounded-md shadow">
+                    <span className="text-sm">+{items.length - 3} más...</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
         </motion.div>
         
         {/* Image with parallax effect */}
@@ -77,6 +122,24 @@ const Hero: React.FC = () => {
           </div>
         </motion.div>
       </div>
+      
+      {/* Scroll down indicator */}
+      <motion.div 
+        className="absolute bottom-10 left-1/2 transform -translate-x-1/2 cursor-pointer"
+        onClick={handleScrollToContent}
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1, duration: 0.5 }}
+      >
+        <motion.div 
+          className="flex flex-col items-center"
+          animate={{ y: [0, 10, 0] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+        >
+          <span className="text-sm font-medium mb-2">Scroll Down</span>
+          <ChevronDown className="h-6 w-6" />
+        </motion.div>
+      </motion.div>
     </section>
   );
 };

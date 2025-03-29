@@ -42,7 +42,7 @@ const Navbar: React.FC = () => {
     ...(user ? [{ name: t('navbar.orders'), path: '/orders', icon: Package2 }] : []),
     ...(isAdmin ? [
       { name: t('navbar.admin'), path: '/admin', icon: ScrollText },
-      { name: 'Gestión de Pedidos', path: '/admin/orders', icon: Package2 },
+      { name: t('navbar.orders'), path: '/admin/orders', icon: Package2 },
     ] : []),
   ];
 

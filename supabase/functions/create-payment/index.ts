@@ -18,7 +18,11 @@ serve(async (req) => {
     // Obtener secretos y configurar clientes
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-    const stripeSecretKey = 'sk_test_51R7gzmQHdPrI53nn6qe7c2zdksq6V5gubpCX6YpPkfsfgbvfe9W2ZlNCUdNqoskaBYfqHxuS7Y1C5hPR4UXafqFO00tKURMQy8';
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
+    
+    if (!stripeSecretKey) {
+      throw new Error('Missing STRIPE_SECRET_KEY env variable');
+    }
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     const stripe = new Stripe(stripeSecretKey, {
@@ -57,6 +61,24 @@ serve(async (req) => {
       paymentMethodTypes.push('google_pay');
     }
 
+    console.log('Creating Stripe checkout session with:', {
+      paymentMethodTypes,
+      lineItems: items.map(item => ({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: item.name,
+            images: item.image ? [item.image] : [],
+          },
+          unit_amount: Math.round(item.price * 100),
+        },
+        quantity: item.quantity,
+      })),
+      mode: 'payment',
+      successUrl: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: returnUrl,
+    });
+
     // Crear la sesión de checkout de Stripe
     const session = await stripe.checkout.sessions.create({
       payment_method_types: paymentMethodTypes,
@@ -80,6 +102,8 @@ serve(async (req) => {
       success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: returnUrl,
     });
+
+    console.log('Stripe session created successfully:', session.id);
 
     // Crear la orden en la base de datos
     const { data: order, error: orderError } = await supabase
@@ -130,7 +154,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('Payment error:', error.message);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

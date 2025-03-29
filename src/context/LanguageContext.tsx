@@ -36,6 +36,11 @@ const translations = {
     'cart.title': 'Your Cart',
     'cart.empty': 'Your cart is empty',
     'cart.checkout': 'Checkout',
+    'navbar.products': 'Products',
+    'navbar.orders': 'Orders',
+    'navbar.admin': 'Admin',
+    'auth.signIn': 'Sign In',
+    'auth.signOut': 'Sign Out',
   },
   es: {
     'nav.home': 'Inicio',
@@ -63,6 +68,11 @@ const translations = {
     'cart.title': 'Tu Carrito',
     'cart.empty': 'Tu carrito está vacío',
     'cart.checkout': 'Pagar',
+    'navbar.products': 'Productos',
+    'navbar.orders': 'Pedidos',
+    'navbar.admin': 'Administración',
+    'auth.signIn': 'Iniciar Sesión',
+    'auth.signOut': 'Cerrar Sesión',
   }
 };
 

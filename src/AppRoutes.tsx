@@ -1,4 +1,3 @@
-
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import { useEffect } from "react";
@@ -18,22 +17,10 @@ const AppRoutes = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Force renavigation to current route when storage is initialized
-  // to ensure components render with correct storage permissions
+  // Keep track of initialization but don't auto-redirect
   useEffect(() => {
     if (initialized) {
-      const isAdminRoute = location.pathname.includes('/admin');
-      
-      if (isAdminRoute) {
-        // For admin routes, refresh after storage is initialized
-        // This ensures the admin validation checks run with proper session
-        console.log('Storage initialized. Refreshing admin route:', location.pathname);
-        setTimeout(() => {
-          navigate(0); // Refresh the current page
-        }, 100); 
-      } else {
-        console.log('Storage initialized for non-admin route:', location.pathname);
-      }
+      console.log('Storage initialization complete for route:', location.pathname);
     }
   }, [initialized, location.pathname]);
 

@@ -18,6 +18,7 @@ export const useInitializeStorage = () => {
         
         if (error) {
           console.error('Error checking buckets:', error);
+          setLoading(false);
           return;
         }
         
@@ -30,8 +31,8 @@ export const useInitializeStorage = () => {
             throw functionError;
           }
           
-          // Show toast, but only once per session
-          if (!toastShown) {
+          // Show toast, but only once per session and only if it's the first time
+          if (!toastShown && !initialized) {
             toast({
               title: 'Almacenamiento inicializado',
               description: 'El sistema de almacenamiento ha sido configurado correctamente.',
@@ -58,8 +59,11 @@ export const useInitializeStorage = () => {
       }
     };
     
-    checkAndInitializeStorage();
-  }, [toastShown]);
+    // Only run initialization if it hasn't been done yet
+    if (!initialized) {
+      checkAndInitializeStorage();
+    }
+  }, [toastShown, initialized]);
 
   return { initialized, loading };
 };

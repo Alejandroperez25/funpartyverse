@@ -13,11 +13,12 @@ import { supabase } from '@/integrations/supabase/client';
 
 const OrderAdmin: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAdmin, loading: authLoading } = useAuth();
-  const [adminStatusChecked, setAdminStatusChecked] = useState(false);
+  const { user, isAdmin, loading: authLoading, adminChecked } = useAuth();
+  const [pageCheckComplete, setPageCheckComplete] = useState(false);
+
   const {
     orders,
-    loading,
+    loading: ordersLoading,
     open,
     setOpen,
     currentOrder,
@@ -31,13 +32,13 @@ const OrderAdmin: React.FC = () => {
     const verifyAdminStatus = async () => {
       if (!user) {
         console.log('No user found, redirecting to auth');
-        navigate('/auth');
         toast({
           title: 'Acceso Restringido',
           description: 'Debes iniciar sesión para acceder a esta página',
           variant: 'destructive',
         });
-        setAdminStatusChecked(true);
+        navigate('/auth');
+        setPageCheckComplete(true);
         return;
       }
 
@@ -50,8 +51,8 @@ const OrderAdmin: React.FC = () => {
           .single();
         
         if (profileData && profileData.role === 'admin') {
-          console.log('Direct check: User is admin via profiles');
-          setAdminStatusChecked(true);
+          console.log('Direct page check: User is admin via profiles');
+          setPageCheckComplete(true);
           return; // User is admin, don't redirect
         }
         
@@ -63,23 +64,24 @@ const OrderAdmin: React.FC = () => {
           .eq('role', 'admin');
         
         if (rolesData && rolesData.length > 0) {
-          console.log('Direct check: User is admin via user_roles');
-          setAdminStatusChecked(true);
+          console.log('Direct page check: User is admin via user_roles');
+          setPageCheckComplete(true);
           return; // User is admin, don't redirect
         }
         
         // If we reach here, user is not admin
-        console.log('Direct check: User is NOT admin');
+        console.log('Direct page check: User is NOT admin - redirecting');
         navigate('/');
         toast({
           title: 'Acceso Restringido',
           description: 'No tienes permisos para acceder a esta página',
           variant: 'destructive',
         });
+        setPageCheckComplete(true);
       } catch (error) {
         console.error('Error directly checking admin status:', error);
         // On error, fall back to context value
-        if (!isAdmin) {
+        if (!isAdmin && adminChecked) {
           navigate('/');
           toast({
             title: 'Acceso Restringido',
@@ -87,17 +89,19 @@ const OrderAdmin: React.FC = () => {
             variant: 'destructive',
           });
         }
-      } finally {
-        setAdminStatusChecked(true);
+        setPageCheckComplete(true);
       }
     };
 
-    if (!authLoading && !adminStatusChecked) {
+    if (!authLoading && user && !pageCheckComplete) {
       verifyAdminStatus();
+    } else if (!authLoading && !user && !pageCheckComplete) {
+      navigate('/auth');
+      setPageCheckComplete(true);
     }
-  }, [user, authLoading, adminStatusChecked, navigate, isAdmin]);
+  }, [user, authLoading, isAdmin, adminChecked, pageCheckComplete, navigate]);
 
-  if (authLoading || !adminStatusChecked) {
+  if (authLoading || !pageCheckComplete) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -112,15 +116,29 @@ const OrderAdmin: React.FC = () => {
     );
   }
 
-  if (!user || (!isAdmin && adminStatusChecked)) {
-    return null; // Will be redirected by the effect
-  }
-
-  if (loading) {
+  if (!user || (!isAdmin && adminChecked && pageCheckComplete)) {
+    // Will be redirected by the effect
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <Loading />
+        <div className="flex-grow flex items-center justify-center">
+          <p>Redirigiendo...</p>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (ordersLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-grow flex items-center justify-center">
+          <Loading />
+          <div className="text-center">
+            <p className="mt-4">Cargando pedidos...</p>
+          </div>
+        </div>
         <Footer />
       </div>
     );

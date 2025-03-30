@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  adminChecked: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
@@ -23,6 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -37,6 +39,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (data.session?.user) {
           await checkIfUserIsAdmin(data.session.user.id);
+        } else {
+          setIsAdmin(false);
+          setAdminChecked(true);
         }
       } catch (error: any) {
         console.error('Error fetching session:', error);
@@ -57,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await checkIfUserIsAdmin(currentSession.user.id);
         } else {
           setIsAdmin(false);
+          setAdminChecked(true);
         }
         
         setLoading(false);
@@ -71,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkIfUserIsAdmin = async (userId: string) => {
     try {
       console.log('Checking admin status for user:', userId);
+      setAdminChecked(false);
       
       // First try with the profiles table approach
       const { data: profileData, error: profileError } = await supabase
@@ -80,47 +87,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
       
       if (!profileError && profileData && profileData.role === 'admin') {
-        console.log('User is admin via profiles table');
+        console.log('Direct check: User is admin via profiles');
         setIsAdmin(true);
-        return;
+        setAdminChecked(true);
+        return; // User is admin, don't redirect
       }
       
-      // If that fails, try the has_role function
-      try {
-        const { data, error } = await supabase.rpc('has_role', {
-          _user_id: userId,
-          _role: 'admin'
-        });
-        
-        if (error) throw error;
-        console.log('User admin status via has_role:', data);
-        setIsAdmin(data || false);
-      } catch (rpcError) {
-        console.error('Error checking admin with has_role:', rpcError);
-        
-        // Last resort: just check if user exists in user_roles table
-        const { data: rolesData, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('role', 'admin');
-        
-        if (!rolesError && rolesData && rolesData.length > 0) {
-          console.log('User is admin via user_roles table check');
-          setIsAdmin(true);
-        } else {
-          console.log('User is not admin');
-          setIsAdmin(false);
-        }
+      // Check user_roles table as fallback
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('role', 'admin');
+      
+      if (!rolesError && rolesData && rolesData.length > 0) {
+        console.log('Direct check: User is admin via user_roles');
+        setIsAdmin(true);
+        setAdminChecked(true);
+        return; // User is admin, don't redirect
       }
+      
+      // If we reach here, user is not admin
+      console.log('Direct check: User is NOT admin');
+      setIsAdmin(false);
+      setAdminChecked(true);
     } catch (error) {
       console.error('Error checking admin status:', error);
       setIsAdmin(false);
+      setAdminChecked(true);
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -140,11 +140,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const signInWithGoogle = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -160,11 +163,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -185,11 +191,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
@@ -205,6 +214,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -213,6 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     loading,
     isAdmin,
+    adminChecked,
     signIn,
     signInWithGoogle,
     signUp,

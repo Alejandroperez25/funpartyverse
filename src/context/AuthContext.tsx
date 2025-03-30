@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(data.session?.user ?? null);
         
         if (data.session?.user) {
-          checkIfUserIsAdmin(data.session.user.id);
+          await checkIfUserIsAdmin(data.session.user.id);
         }
       } catch (error: any) {
         console.error('Error fetching session:', error);
@@ -49,11 +49,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log('Auth state changed:', event, currentSession?.user?.id);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
         if (currentSession?.user) {
-          checkIfUserIsAdmin(currentSession.user.id);
+          await checkIfUserIsAdmin(currentSession.user.id);
         } else {
           setIsAdmin(false);
         }
@@ -69,14 +70,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkIfUserIsAdmin = async (userId: string) => {
     try {
-      // Use the has_role function from our database to check if user is admin
-      const { data, error } = await supabase.rpc('has_role', {
-        _user_id: userId,
-        _role: 'admin'
-      });
+      console.log('Checking admin status for user:', userId);
       
-      if (error) throw error;
-      setIsAdmin(data || false);
+      // First try with the profiles table approach
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      
+      if (!profileError && profileData && profileData.role === 'admin') {
+        console.log('User is admin via profiles table');
+        setIsAdmin(true);
+        return;
+      }
+      
+      // If that fails, try the has_role function
+      try {
+        const { data, error } = await supabase.rpc('has_role', {
+          _user_id: userId,
+          _role: 'admin'
+        });
+        
+        if (error) throw error;
+        console.log('User admin status via has_role:', data);
+        setIsAdmin(data || false);
+      } catch (rpcError) {
+        console.error('Error checking admin with has_role:', rpcError);
+        
+        // Last resort: just check if user exists in user_roles table
+        const { data: rolesData, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('role', 'admin');
+        
+        if (!rolesError && rolesData && rolesData.length > 0) {
+          console.log('User is admin via user_roles table check');
+          setIsAdmin(true);
+        } else {
+          console.log('User is not admin');
+          setIsAdmin(false);
+        }
+      }
     } catch (error) {
       console.error('Error checking admin status:', error);
       setIsAdmin(false);

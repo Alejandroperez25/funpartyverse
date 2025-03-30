@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast';
 export const useInitializeStorage = () => {
   const [initialized, setInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [toastShown, setToastShown] = useState(false);
 
   useEffect(() => {
     const checkAndInitializeStorage = async () => {
@@ -29,27 +30,36 @@ export const useInitializeStorage = () => {
             throw functionError;
           }
           
-          toast({
-            title: 'Almacenamiento inicializado',
-            description: 'El sistema de almacenamiento ha sido configurado correctamente.',
-          });
+          // Show toast, but only once per session
+          if (!toastShown) {
+            toast({
+              title: 'Almacenamiento inicializado',
+              description: 'El sistema de almacenamiento ha sido configurado correctamente.',
+            });
+            setToastShown(true);
+          }
+        } else {
+          console.log('Storage bucket already exists');
         }
         
         setInitialized(true);
       } catch (error: any) {
         console.error('Failed to initialize storage:', error);
-        toast({
-          title: 'Error',
-          description: 'No se pudo inicializar el almacenamiento: ' + error.message,
-          variant: 'destructive',
-        });
+        if (!toastShown) {
+          toast({
+            title: 'Error',
+            description: 'No se pudo inicializar el almacenamiento: ' + error.message,
+            variant: 'destructive',
+          });
+          setToastShown(true);
+        }
       } finally {
         setLoading(false);
       }
     };
     
     checkAndInitializeStorage();
-  }, []);
+  }, [toastShown]);
 
   return { initialized, loading };
 };

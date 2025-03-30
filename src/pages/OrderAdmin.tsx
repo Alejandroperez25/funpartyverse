@@ -1,7 +1,5 @@
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import Loading from '@/components/Loading';
@@ -9,13 +7,9 @@ import OrderTable from '@/components/orders/OrderTable';
 import OrderEditDialog from '@/components/orders/OrderEditDialog';
 import { useOrders } from '@/hooks/useOrders';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 
 const OrderAdmin: React.FC = () => {
-  const navigate = useNavigate();
-  const { user, isAdmin, loading: authLoading, adminChecked } = useAuth();
-  const [pageCheckComplete, setPageCheckComplete] = useState(false);
-
+  const { isAdmin, loading: authLoading } = useAuth();
   const {
     orders,
     loading: ordersLoading,
@@ -27,81 +21,7 @@ const OrderAdmin: React.FC = () => {
     handleOrderStatusChange
   } = useOrders();
 
-  // Effect to directly check admin status from the database
-  useEffect(() => {
-    const verifyAdminStatus = async () => {
-      if (!user) {
-        console.log('No user found, redirecting to auth');
-        toast({
-          title: 'Acceso Restringido',
-          description: 'Debes iniciar sesión para acceder a esta página',
-          variant: 'destructive',
-        });
-        navigate('/auth');
-        setPageCheckComplete(true);
-        return;
-      }
-
-      try {
-        // First try checking directly in the profiles table
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-        
-        if (profileData && profileData.role === 'admin') {
-          console.log('Direct page check: User is admin via profiles');
-          setPageCheckComplete(true);
-          return; // User is admin, don't redirect
-        }
-        
-        // Check user_roles table as fallback
-        const { data: rolesData } = await supabase
-          .from('user_roles')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('role', 'admin');
-        
-        if (rolesData && rolesData.length > 0) {
-          console.log('Direct page check: User is admin via user_roles');
-          setPageCheckComplete(true);
-          return; // User is admin, don't redirect
-        }
-        
-        // If we reach here, user is not admin
-        console.log('Direct page check: User is NOT admin - redirecting');
-        navigate('/');
-        toast({
-          title: 'Acceso Restringido',
-          description: 'No tienes permisos para acceder a esta página',
-          variant: 'destructive',
-        });
-        setPageCheckComplete(true);
-      } catch (error) {
-        console.error('Error directly checking admin status:', error);
-        // On error, fall back to context value
-        if (!isAdmin && adminChecked) {
-          navigate('/');
-          toast({
-            title: 'Acceso Restringido',
-            description: 'No tienes permisos para acceder a esta página',
-            variant: 'destructive',
-          });
-        }
-        setPageCheckComplete(true);
-      }
-    };
-
-    if (!authLoading && user && !pageCheckComplete) {
-      verifyAdminStatus();
-    } else if (!authLoading && !user && !pageCheckComplete) {
-      navigate('/auth');
-      setPageCheckComplete(true);
-    }
-  }, [user, authLoading, isAdmin, adminChecked, pageCheckComplete, navigate]);
-
-  if (authLoading || !pageCheckComplete) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -110,19 +30,6 @@ const OrderAdmin: React.FC = () => {
           <div className="text-center">
             <p className="mt-4">Verificando permisos de administrador...</p>
           </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (!user || (!isAdmin && adminChecked && pageCheckComplete)) {
-    // Will be redirected by the effect
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <div className="flex-grow flex items-center justify-center">
-          <p>Redirigiendo...</p>
         </div>
         <Footer />
       </div>

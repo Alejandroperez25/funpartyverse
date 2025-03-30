@@ -28,52 +28,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchUserSession = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
-        
-        if (data.session?.user) {
-          await checkIfUserIsAdmin(data.session.user.id);
-        } else {
-          setIsAdmin(false);
-          setAdminChecked(true);
-        }
-      } catch (error: any) {
-        console.error('Error fetching session:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        console.log('Auth state changed:', event, currentSession?.user?.id);
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        
-        if (currentSession?.user) {
-          await checkIfUserIsAdmin(currentSession.user.id);
-        } else {
-          setIsAdmin(false);
-          setAdminChecked(true);
-        }
-        
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
   const checkIfUserIsAdmin = async (userId: string) => {
     try {
       console.log('Checking admin status for user:', userId);
@@ -87,10 +41,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
       
       if (!profileError && profileData && profileData.role === 'admin') {
-        console.log('Direct check: User is admin via profiles');
+        console.log('User is admin via profiles table');
         setIsAdmin(true);
         setAdminChecked(true);
-        return; // User is admin, don't redirect
+        return;
       }
       
       // Check user_roles table as fallback
@@ -101,14 +55,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('role', 'admin');
       
       if (!rolesError && rolesData && rolesData.length > 0) {
-        console.log('Direct check: User is admin via user_roles');
+        console.log('User is admin via user_roles table');
         setIsAdmin(true);
         setAdminChecked(true);
-        return; // User is admin, don't redirect
+        return;
       }
       
       // If we reach here, user is not admin
-      console.log('Direct check: User is NOT admin');
+      console.log('User is NOT admin');
       setIsAdmin(false);
       setAdminChecked(true);
     } catch (error) {
@@ -117,6 +71,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAdminChecked(true);
     }
   };
+
+  useEffect(() => {
+    const setupAuth = async () => {
+      try {
+        setLoading(true);
+        
+        // First set up the auth listener before checking the session
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+          async (event, currentSession) => {
+            console.log('Auth state changed:', event, currentSession?.user?.id);
+            
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+            
+            if (currentSession?.user) {
+              // Use setTimeout to prevent deadlocks with Supabase auth
+              setTimeout(() => {
+                checkIfUserIsAdmin(currentSession.user!.id);
+              }, 0);
+            } else {
+              setIsAdmin(false);
+              setAdminChecked(true);
+            }
+          }
+        );
+        
+        // Then check for existing session
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) throw error;
+        
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+        
+        if (data.session?.user) {
+          await checkIfUserIsAdmin(data.session.user.id);
+        } else {
+          setIsAdmin(false);
+          setAdminChecked(true);
+        }
+        
+        setLoading(false);
+        
+        return () => {
+          authListener.subscription.unsubscribe();
+        };
+      } catch (error: any) {
+        console.error('Error in auth setup:', error);
+        setLoading(false);
+      }
+    };
+    
+    setupAuth();
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {

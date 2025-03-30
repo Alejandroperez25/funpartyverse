@@ -1,6 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -26,7 +25,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,15 +46,22 @@ interface Product {
   image: string;
 }
 
+interface NewProduct {
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  image: string;
+}
+
 const Admin: React.FC = () => {
-  const { user, isAdmin } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [newProduct, setNewProduct] = useState<Omit<Product, 'id'>>({
+  const [newProduct, setNewProduct] = useState<NewProduct>({
     name: '',
     description: '',
     price: 0,
@@ -66,26 +71,7 @@ const Admin: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-
-    if (user && !isAdmin) {
-      navigate('/');
-      toast({
-        title: 'Acceso denegado',
-        description: 'No tienes permisos para acceder a esta página',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    fetchProducts();
-  }, [user, isAdmin, navigate]);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -105,7 +91,11 @@ const Admin: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const handleFileUpload = async (file: File): Promise<string> => {
     setIsUploading(true);
@@ -159,6 +149,7 @@ const Admin: React.FC = () => {
         imageUrl = await handleFileUpload(uploadedFile);
       }
 
+      // Create product without specifying ID (it's auto-generated)
       const { data, error } = await supabase
         .from('products')
         .insert({
@@ -167,6 +158,7 @@ const Admin: React.FC = () => {
           price: newProduct.price,
           stock: newProduct.stock,
           image: imageUrl,
+          user_id: user?.id
         })
         .select();
 
@@ -209,6 +201,7 @@ const Admin: React.FC = () => {
         imageUrl = await handleFileUpload(uploadedFile);
       }
 
+      // Update product without sending the ID
       const { error } = await supabase
         .from('products')
         .update({

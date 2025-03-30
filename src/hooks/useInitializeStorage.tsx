@@ -9,8 +9,12 @@ export const useInitializeStorage = () => {
   const [toastShown, setToastShown] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+    const storageInitialized = localStorage.getItem('storage_initialized');
+    
     const checkAndInitializeStorage = async () => {
       try {
+        if (!mounted) return;
         setLoading(true);
         
         // Check if bucket exists
@@ -18,12 +22,13 @@ export const useInitializeStorage = () => {
         
         if (error) {
           console.error('Error checking buckets:', error);
-          setLoading(false);
+          if (mounted) setLoading(false);
           return;
         }
         
         if (!buckets.some(bucket => bucket.name === 'almacenamiento')) {
           console.log('Storage bucket not found, creating...');
+          
           // Invoke the function to create it
           const { error: functionError } = await supabase.functions.invoke('create-image-bucket');
           
@@ -31,22 +36,27 @@ export const useInitializeStorage = () => {
             throw functionError;
           }
           
-          // Show toast, but only once per session and only if it's the first time
-          if (!toastShown && !initialized) {
-            toast({
-              title: 'Almacenamiento inicializado',
-              description: 'El sistema de almacenamiento ha sido configurado correctamente.',
-            });
+          // Store in localStorage that initialization has been done
+          localStorage.setItem('storage_initialized', 'true');
+          
+          // Only show toast once per session and only on first initialization
+          if (!toastShown && mounted) {
+            // Silent toast - we don't need to disrupt the user experience
+            console.log('Storage bucket created successfully');
             setToastShown(true);
           }
         } else {
           console.log('Storage bucket already exists');
+          localStorage.setItem('storage_initialized', 'true');
         }
         
-        setInitialized(true);
+        if (mounted) {
+          setInitialized(true);
+          setLoading(false);
+        }
       } catch (error: any) {
         console.error('Failed to initialize storage:', error);
-        if (!toastShown) {
+        if (!toastShown && mounted) {
           toast({
             title: 'Error',
             description: 'No se pudo inicializar el almacenamiento: ' + error.message,
@@ -54,15 +64,21 @@ export const useInitializeStorage = () => {
           });
           setToastShown(true);
         }
-      } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
     
-    // Only run initialization if it hasn't been done yet
-    if (!initialized) {
+    // If not initialized yet or no localStorage record, initialize
+    if (!storageInitialized || !initialized) {
       checkAndInitializeStorage();
+    } else {
+      setInitialized(true);
+      setLoading(false);
     }
+    
+    return () => {
+      mounted = false;
+    };
   }, [toastShown, initialized]);
 
   return { initialized, loading };

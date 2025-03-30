@@ -1,6 +1,5 @@
 
 import React, { useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
@@ -13,7 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 
 const OrderAdmin: React.FC = () => {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const {
     orders,
     loading,
@@ -26,6 +25,16 @@ const OrderAdmin: React.FC = () => {
   } = useOrders();
 
   useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      toast({
+        title: 'Acceso Restringido',
+        description: 'Debes iniciar sesión para acceder a esta página',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     if (!isAdmin) {
       navigate('/');
       toast({
@@ -34,7 +43,11 @@ const OrderAdmin: React.FC = () => {
         variant: 'destructive',
       });
     }
-  }, [isAdmin, navigate]);
+  }, [user, isAdmin, navigate]);
+
+  if (!user || !isAdmin) {
+    return null;
+  }
 
   if (loading) {
     return (

@@ -1,6 +1,8 @@
 
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
+import { useEffect } from "react";
+import { useInitializeStorage } from "@/hooks/useInitializeStorage";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -12,6 +14,18 @@ import Auth from "./pages/Auth";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 
 const AppRoutes = () => {
+  const { initialized } = useInitializeStorage();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Force renavigation to current route when storage is initialized
+  // to ensure components render with correct storage permissions
+  useEffect(() => {
+    if (initialized && location.pathname.includes('/admin')) {
+      navigate(0); // Refresh the current page
+    }
+  }, [initialized]);
+
   return (
     <AuthProvider>
       <Routes>

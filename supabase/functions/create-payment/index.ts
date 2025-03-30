@@ -40,28 +40,27 @@ serve(async (req) => {
       throw new Error('Los items son requeridos y deben ser un arreglo no vacío');
     }
 
-    // Get authorization header
+    // Get authorization header and user
     const authHeader = req.headers.get('Authorization');
+    let userId = null;
     
-    if (!authHeader) {
-      console.log('Proceeding without authentication for guest checkout');
-      // Continue with guest checkout (no user_id will be associated)
-    } else {
+    if (authHeader) {
       // Try to get the user if authentication header is present
       try {
-        const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error } = await supabase.auth.getUser(token);
         
         if (error) {
           console.error('Error getting user:', error.message);
-          // Continue with guest checkout
         } else if (user) {
           console.log('User authenticated:', user.id);
-          // User is authenticated, continue with the order
+          userId = user.id;
         }
       } catch (authError) {
         console.error('Authentication error:', authError);
-        // Continue with guest checkout
       }
+    } else {
+      console.log('No authentication header provided. Continue as guest.');
     }
 
     // Calculate total amount
@@ -92,57 +91,51 @@ serve(async (req) => {
       mode: 'payment',
       success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}&success=true`,
       cancel_url: `${returnUrl}?success=false`,
+      metadata: {
+        user_id: userId || 'guest',
+      },
     });
 
     console.log('Stripe session created successfully:', session.id);
 
-    // If we have a user, create an order in the database
+    // Create an order in the database regardless of authentication status
     let orderId = null;
-    if (authHeader) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-        
-        if (user) {
-          // Create order in database
-          const { data: order, error: orderError } = await supabase
-            .from('orders')
-            .insert({
-              user_id: user.id,
-              total_amount: totalAmount,
-              status: 'pending',
-            })
-            .select()
-            .single();
+    try {
+      // Create order in database with user_id if available, otherwise null
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: userId,
+          total_amount: totalAmount,
+          status: 'pending',
+        })
+        .select()
+        .single();
 
-          if (orderError) {
-            console.error('Error creating order:', orderError);
-            // Continue without saving the order
-          } else if (order) {
-            orderId = order.id;
+      if (orderError) {
+        console.error('Error creating order:', orderError);
+      } else if (order) {
+        orderId = order.id;
 
-            // Add items to order
-            const orderItems = items.map(item => ({
-              order_id: order.id,
-              product_id: item.id,
-              product_name: item.name,
-              price: item.price,
-              quantity: item.quantity
-            }));
+        // Add items to order
+        const orderItems = items.map(item => ({
+          order_id: order.id,
+          product_id: item.id,
+          product_name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        }));
 
-            const { error: itemsError } = await supabase
-              .from('order_items')
-              .insert(orderItems);
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItems);
 
-            if (itemsError) {
-              console.error('Error adding order items:', itemsError);
-              // Continue without saving order items
-            }
-          }
+        if (itemsError) {
+          console.error('Error adding order items:', itemsError);
         }
-      } catch (error) {
-        console.error('Error in order creation:', error);
-        // Continue without saving the order
       }
+    } catch (error) {
+      console.error('Error in order creation:', error);
     }
 
     return new Response(

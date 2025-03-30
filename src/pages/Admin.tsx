@@ -40,7 +40,7 @@ import { FileUploader } from '@/components/FileUploader';
 
 // Types for our component
 interface Product {
-  id: string | number;
+  id: number;
   name: string;
   description: string;
   price: number;
@@ -56,7 +56,7 @@ const Admin: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [newProduct, setNewProduct] = useState<Partial<Product>>({
+  const [newProduct, setNewProduct] = useState<Omit<Product, 'id'>>({
     name: '',
     description: '',
     price: 0,
@@ -112,7 +112,7 @@ const Admin: React.FC = () => {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `/Colchon.jpg`;
+      const filePath = `product_images/${fileName}`;
 
       // Upload the file to Supabase Storage
       const { error: uploadError } = await supabase.storage
@@ -162,7 +162,10 @@ const Admin: React.FC = () => {
       const { data, error } = await supabase
         .from('products')
         .insert({
-          ...newProduct,
+          name: newProduct.name,
+          description: newProduct.description,
+          price: newProduct.price,
+          stock: newProduct.stock,
           image: imageUrl,
         })
         .select();
@@ -215,7 +218,7 @@ const Admin: React.FC = () => {
           stock: selectedProduct.stock,
           image: imageUrl,
         })
-        .eq('id', selectedProduct.id.toString());
+        .eq('id', selectedProduct.id);
 
       if (error) throw error;
 
@@ -247,7 +250,7 @@ const Admin: React.FC = () => {
       const { error } = await supabase
         .from('products')
         .delete()
-        .eq('id', selectedProduct.id.toString());
+        .eq('id', selectedProduct.id);
 
       if (error) throw error;
 

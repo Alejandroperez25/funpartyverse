@@ -3,15 +3,23 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Order } from '@/components/orders/OrderTable';
+import { useAuth } from '@/context/AuthContext';
 
 export const useOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const { isAdmin } = useAuth();
 
   const fetchOrders = async () => {
     setLoading(true);
+    
+    if (!isAdmin) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
     
     // Get all orders
     const { data: ordersData, error: ordersError } = await supabase
@@ -39,22 +47,34 @@ export const useOrders = () => {
           .select('*')
           .eq('order_id', order.id);
         
-        // Get user email
-        const { data: userData, error: userError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', order.user_id)
-          .single();
+        let userEmail = 'Guest';
         
-        // Find user email from auth
-        const { data: authData } = await supabase.auth.admin.getUserById(
-          order.user_id
-        );
+        // If there's a user_id, try to get their email
+        if (order.user_id) {
+          try {
+            const { data } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', order.user_id)
+              .single();
+              
+            // Use email from auth if available
+            const { data: authData } = await supabase.auth.admin.getUserById(
+              order.user_id
+            );
+            
+            if (authData?.user?.email) {
+              userEmail = authData.user.email;
+            }
+          } catch (error) {
+            console.error('Error fetching user details:', error);
+          }
+        }
         
         return {
           ...order,
           items: itemsData || [],
-          user_email: authData?.user?.email || 'Unknown'
+          user_email: userEmail
         };
       })
     );
@@ -96,7 +116,7 @@ export const useOrders = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [isAdmin]);
 
   return {
     orders,

@@ -22,13 +22,11 @@ export const useOrders = () => {
     setLoading(true);
     
     try {
-      let query = supabase.from('orders');
+      let query = supabase.from('orders').select('*');
       
       // If user is admin, fetch all orders, otherwise only user's orders
-      if (isAdmin) {
-        query = query.select('*');
-      } else {
-        query = query.select('*').eq('user_id', user.id);
+      if (!isAdmin) {
+        query = query.eq('user_id', user.id);
       }
       
       const { data: ordersData, error: ordersError } = await query.order('created_at', { ascending: false });

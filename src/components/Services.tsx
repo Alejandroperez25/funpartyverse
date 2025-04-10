@@ -29,7 +29,7 @@ const Services: React.FC = () => {
       name: 'Bounce House',
       description: 'Colorful and safe bounce houses for endless fun and entertainment.',
       price: 149.99,
-      image: 'https://images.unsplash.com/photo-1534570122623-99e8378a9aa7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80',
+      image: '/lovable-uploads/54e27d4e-b8ae-4061-9a1b-3b3b83a19f7c.png',
       icon: <Tent className="h-5 w-5 text-funneepurple" />
     },
     {
@@ -37,7 +37,7 @@ const Services: React.FC = () => {
       name: 'Popcorn Machine',
       description: 'Fresh, buttery popcorn for your guests to enjoy during the celebration.',
       price: 79.99,
-      image: 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80',
+      image: '/lovable-uploads/abe42246-299b-47ae-a0be-0f2bf7527f21.png',
       icon: <Popcorn className="h-5 w-5 text-funneepurple" />
     },
     {
@@ -45,7 +45,7 @@ const Services: React.FC = () => {
       name: 'Cotton Candy Machine',
       description: 'Sweet, fluffy cotton candy to delight party guests of all ages.',
       price: 89.99,
-      image: 'https://images.unsplash.com/photo-1576744583403-a8b82fda32ad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80',
+      image: '/lovable-uploads/ac008183-5868-4d36-9000-5adbb19300e2.png',
       icon: <Candy className="h-5 w-5 text-funneepurple" />
     },
     {
@@ -53,15 +53,15 @@ const Services: React.FC = () => {
       name: 'Hot Dog Machine',
       description: 'Delicious hot dogs cooked to perfection for a savory party treat.',
       price: 99.99,
-      image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80',
+      image: '/lovable-uploads/1498fe57-0184-4abe-b1ee-08b4d8d2ab88.png',
       icon: <UtensilsCrossed className="h-5 w-5 text-funneepurple" />
     },
     {
-      id: 'chairs',
-      name: 'Party Chairs',
-      description: 'Comfortable seating for your guests to relax and enjoy the festivities.',
-      price: 2.99,
-      image: 'https://images.unsplash.com/photo-1580584126903-c17d41830450?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80',
+      id: 'water-slide',
+      name: 'Water Slide',
+      description: 'Exciting water slide perfect for summer parties and outdoor events.',
+      price: 199.99,
+      image: '/lovable-uploads/80ece112-6025-4d01-a563-c537799d31c0.png',
       icon: <LampFloor className="h-5 w-5 text-funneepurple" />
     },
     {

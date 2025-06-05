@@ -116,7 +116,7 @@ const Navbar: React.FC = () => {
           type: "spring",
           stiffness: 300
         }}>
-            <span className="https://ubzvbhubngtldpmfvbxx.supabase.co/storage/v1/object/public/almacenamiento//Prueba%20N1.png">Epic Zona</span>
+            
           </motion.div>
         </Link>
         

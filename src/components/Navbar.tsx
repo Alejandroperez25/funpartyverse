@@ -10,7 +10,6 @@ import { LogOut, User, Menu, X, Home, ShoppingBag, Package2, ScrollText } from '
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { motion } from 'framer-motion';
-
 const Navbar: React.FC = () => {
   const {
     user,
@@ -119,7 +118,7 @@ const Navbar: React.FC = () => {
           stiffness: 300
         }}>
             <img src="/lovable-uploads/20296858-23a1-4d50-87e5-7867df71b727.png" alt="PlayZone Logo" className="h-10 w-auto" />
-            <span className="text-2xl font-bold text-funneepurple">PlayZone</span>
+            <span className="text-2xl font-bold text-funneepurple"></span>
           </motion.div>
         </Link>
         

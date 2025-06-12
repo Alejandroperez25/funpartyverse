@@ -10,6 +10,7 @@ import { LogOut, User, Menu, X, Home, ShoppingBag, Package2, ScrollText } from '
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { motion } from 'framer-motion';
+
 const Navbar: React.FC = () => {
   const {
     user,
@@ -64,8 +65,9 @@ const Navbar: React.FC = () => {
       <SheetContent side="left" className="w-[80%]">
         <div className="flex flex-col h-full py-4">
           <div className="flex items-center justify-between mb-8">
-            <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-funneepurple to-funneeorange bg-clip-text text-transparent" onClick={() => setMobileMenuOpen(false)}>
-              Funnee Prints
+            <Link to="/" className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
+              <img src="/lovable-uploads/20296858-23a1-4d50-87e5-7867df71b727.png" alt="PlayZone Logo" className="h-8 w-auto" />
+              <span className="text-lg font-bold text-funneepurple">PlayZone</span>
             </Link>
             <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
               <X className="h-5 w-5" />
@@ -110,13 +112,14 @@ const Navbar: React.FC = () => {
   }}>
       <div className="container mx-auto px-4 py-2 flex items-center justify-between">
         <Link to="/">
-          <motion.div className="text-2xl font-bold" whileHover={{
+          <motion.div className="flex items-center space-x-3" whileHover={{
           scale: 1.05
         }} transition={{
           type: "spring",
           stiffness: 300
         }}>
-            
+            <img src="/lovable-uploads/20296858-23a1-4d50-87e5-7867df71b727.png" alt="PlayZone Logo" className="h-10 w-auto" />
+            <span className="text-2xl font-bold text-funneepurple">PlayZone</span>
           </motion.div>
         </Link>
         

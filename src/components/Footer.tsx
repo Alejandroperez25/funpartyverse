@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import { Instagram, Mail, Phone } from 'lucide-react';
@@ -26,10 +25,10 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Logo & About */}
           <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center">
-              <h2 className="text-2xl font-bold">
-                <span className="text-funneepurple font-toybox">Funnee</span>
-                <span className="text-funneeorange font-toybox">Kiddee</span>
+            <div className="flex items-center space-x-3">
+              <img src="/lovable-uploads/20296858-23a1-4d50-87e5-7867df71b727.png" alt="PlayZone Logo" className="h-12 w-auto" />
+              <h2 className="text-2xl font-bold text-funneepurple">
+                PlayZone
               </h2>
             </div>
             <p className="mt-4 text-gray-400 max-w-md">
@@ -93,7 +92,7 @@ const Footer: React.FC = () => {
         
         {/* Copyright */}
         <div className="border-t border-gray-800 mt-10 pt-6 text-center text-gray-400 text-sm">
-          <p>&copy; {currentYear} Funnee Kiddee. {t('footer.rights')}</p>
+          <p>&copy; {currentYear} PlayZone. {t('footer.rights')}</p>
         </div>
       </div>
     </footer>

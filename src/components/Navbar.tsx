@@ -117,7 +117,7 @@ const Navbar: React.FC = () => {
           type: "spring",
           stiffness: 300
         }}>
-            <img src="/lovable-uploads/20296858-23a1-4d50-87e5-7867df71b727.png" alt="PlayZone Logo" className="h-10 w-auto object-cover" />
+            <img src="/lovable-uploads/20296858-23a1-4d50-87e5-7867df71b727.png" alt="PlayZone Logo" className="h-10 w-auto object-fill" />
             <span className="text-2xl font-bold text-funneepurple"></span>
           </motion.div>
         </Link>
